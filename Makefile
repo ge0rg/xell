@@ -3,6 +3,7 @@ CC=$(CROSS)gcc
 OBJCOPY=$(CROSS)objcopy
 LD=$(CROSS)ld
 AS=$(CROSS)as
+STRIP=$(CROSS)strip
 
 # Configuration
 CFLAGS = -Wall -nostdinc -O2 -I. -Ilwip/include \
@@ -46,9 +47,9 @@ rom.elf: $(OBJS)
 	$(CC) -n -T rom.lds -nostdlib -m64 -o rom.elf  $(OBJS)
 
 rom.elf32: rom.elf
-	objcopy -O elf32-powerpc rom.elf rom.elf32
-	strip -s rom.elf32
+	$(OBJCOPY) -O elf32-powerpc rom.elf rom.elf32
+	$(STRIP) -s rom.elf32
 
 rom.bin: rom.elf32
-	objcopy -O binary rom.elf rom.bin
+	$(OBJCOPY) -O binary rom.elf rom.bin
 	echo -n "xxxxxxxxxxxxxxxx" >> rom.bin
