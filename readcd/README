@@ -1,0 +1,33 @@
+Not quite a part of XeLL, but might be useful: a "fixed sector reader".
+
+The code is a bit quick&dirty, but does the following:
+
+ - load constants
+ - open tray using SMC
+
+ - delay a bit
+ - issue READ(10)-command,
+ - on error: request sense, loop
+ - read ~128k starting at LBA 0x20 to 0x1310000
+ - jump there
+
+So to actually use this for a live cd, you need the following:
+
+ - prepare a CD with:
+  - XeLL at LBA 0x20 (usually the first file on CD)
+  - the kernel, named "vmlinux" in the root of the CD,
+  - the kernel must contain an initramfs to load the rootfs,
+  - the initramfs must mount the CD, and pivot_root (or whatever) in there.
+
+Then, launch the usual exploit code, but don't upload XeLL but instead this
+binary. It will eject the tray. Put in your linux CD. Close the tray, and
+it will launch XeLL. XeLL will launch vmlinux. from disc, and the kernel
+will run.
+
+The readsector.S is position independent code, so just link it wherever you
+want. Oh, and yes, this code is "small enough" for what you are all waiting
+for.
+
+Have fun ;)
+
+ - tmbinc
