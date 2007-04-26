@@ -43,13 +43,13 @@ clean:
 .S.o:
 	$(CC) $(AFLAGS) -c -o $@ $*.S
 
-rom.elf: $(OBJS)
-	$(CC) -n -T rom.lds -nostdlib -m64 -o rom.elf  $(OBJS)
+%.elf: %.lds $(OBJS)
+	$(CC) -n -T $< -nostdlib -m64 -o $@ $(OBJS)
 
-rom.elf32: rom.elf
-	$(OBJCOPY) -O elf32-powerpc rom.elf rom.elf32
-	$(STRIP) -s rom.elf32
+%.elf32: %.elf
+	$(OBJCOPY) -O elf32-powerpc $< $@
+	$(STRIP) -s $@
 
-rom.bin: rom.elf32
-	$(OBJCOPY) -O binary rom.elf rom.bin
-	echo -n "xxxxxxxxxxxxxxxx" >> rom.bin
+%.bin: %.elf
+	$(OBJCOPY) -O binary $< $@
+	echo -n "xxxxxxxxxxxxxxxx" >> $@
