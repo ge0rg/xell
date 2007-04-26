@@ -31,11 +31,19 @@ LWIP_OBJS = ./lwip/core/tcp_in.o \
 OBJS = startup2.o main.o string.o vsprintf.o ctype.o time.o  \
 	cache.o  $(LWIP_OBJS)  network.o tftp.o httpd/httpd.o httpd/vfs.o dtc.o cdrom.o
 
+BUILD = rom xell-readcd
+
+TARGETS = $(foreach name,$(BUILD),$(addprefix $(name).,bin elf elf32))
+
 # Build rules
-all: rom.bin
+all: $(TARGETS)
+
+.SECONDARY: $(OBJS)
+
+.PHONY: clean
 
 clean:
-	rm -rf $(OBJS) rom.elf rom.elf32 rom.bin
+	rm -rf $(OBJS) $(TARGETS)
 
 .c.o:
 	$(CC) $(CFLAGS) -c -o $@ $*.c
