@@ -7,6 +7,8 @@
 #include <time.h>
 
 extern void try_boot_cdrom(void);
+extern void xenos_init();
+extern void xenos_putch(const char c);
 
 #include "elf_abi.h"
 
@@ -38,6 +40,7 @@ int putchar(int c)
 	if (c == '\n')
 		putch('\r');
 	putch(c);
+	xenos_putch(c);
 	return 0;
 }
 
@@ -177,6 +180,8 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 		/* clear BSS, we're already late */
 	unsigned char *p = (unsigned char*)bss_start;
 	memset(p, 0, bss_end - bss_start);
+
+	xenos_init();
 
 	printf(" * Attempting to catch all CPUs...\n");
 

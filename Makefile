@@ -29,7 +29,8 @@ LWIP_OBJS = ./lwip/core/tcp_in.o \
 	./lwip/arch/xenon/lib.o  ./lwip/arch/xenon/netif/enet.o
 
 OBJS = startup2.o main.o string.o vsprintf.o ctype.o time.o  \
-	cache.o  $(LWIP_OBJS)  network.o tftp.o httpd/httpd.o httpd/vfs.o dtc.o cdrom.o
+	cache.o  $(LWIP_OBJS)  network.o tftp.o httpd/httpd.o httpd/vfs.o dtc.o \
+	cdrom.o xenos.o font_8x16.o
 
 BUILD = xell-serial xell-readcd
 
