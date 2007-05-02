@@ -11,7 +11,7 @@
 #include <string.h>
 #include <vsprintf.h>
 
-// XXX: #define NATIVE_RESOLUTION
+#define NATIVE_RESOLUTION
 
 int xenos_width, xenos_height,
     xenos_size;
@@ -124,7 +124,45 @@ void xenos_putch(const char c) {
 void xenos_init() {
 	struct ati_info *ai = (struct ati_info*)0x200ec806100ULL;
 #ifdef NATIVE_RESOLUTION
-#error not yet coded
+	uint32_t *gfx = (uint32_t*)0x200ec806000ULL;
+
+	/* setup native resolution, i.e. disable scaling */
+	int vxres = gfx[0x134/4];
+	int vyres = gfx[0x138/4];
+	int scl_h = gfx[0x5b4/4], scl_v = gfx[0x5c4/4];
+
+	if (gfx[0x590/4] == 0)
+		scl_h = scl_v = 0x01000000;
+
+	int interlaced = gfx[0x30/4];
+	int black_top = gfx[0x44/4];
+	int offset = gfx[0x580/4];
+	int offset_x = (offset >> 16) & 0xFFFF;
+	int offset_y = offset & 0xFFFF;
+	printf(" - virtual resolution: %d x %d\n", vxres, vyres);
+	printf(" - offset: x=%d, y=%d\n", offset_x, offset_y);
+	printf(" - black: %d %d, %d %d\n",
+		gfx[0x44/4], gfx[0x48/4], gfx[0x4c/4], gfx[0x50/4]);
+	printf(" - interlace flag: %x\n", interlaced);
+
+	int nxres = (vxres - offset_x * 2) * 0x1000 / (scl_h/0x1000);
+	int nyres = (vyres - offset_y * 2) * 0x1000 / (scl_v/0x1000) + black_top * 2;
+	printf(" - native resolution: %d x %d\n", nxres, nyres);
+
+	/* do not change res for interlaced mode! */
+	if (!interlaced) {
+		gfx[0x44/4] = 0; // disable black bar
+		gfx[0x48/4] = 0;
+		gfx[0x4c/4] = 0;
+		gfx[0x50/4] = 0;
+
+		gfx[0x590/4] = 0; // disable scaling
+		gfx[0x584/4] = (nxres << 16) | nyres;
+		gfx[0x580/4] = 0; // disable offset
+		gfx[0x5e8/4] = (nxres * 4) / 0x10 - 1; // fix pitch
+		gfx[0x134/4] = nxres;
+		gfx[0x138/4] = nyres;
+	}
 #endif
 	xenos_fb = (unsigned char*)(long)(ai->base);
 	/* round up size to tiles of 32x32 */
