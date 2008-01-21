@@ -8,6 +8,7 @@
 
 extern void try_boot_cdrom(void);
 extern void xenos_init();
+extern unsigned char* xenos_fb;
 extern void xenos_putch(const char c);
 
 #include "elf_abi.h"
@@ -173,7 +174,10 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	int exc[]={0x100, 0x200, 0x300, 0x380, 0x400, 0x480, 0x500, 0x600, 0x700, 0x800, 0x900, 0x980, 0xC00, 0xD00, 0xF00, 0xF20, 0x1300, 0x1600, 0x1700, 0x1800};
 
 	int i;
-	
+
+	/* init xenos_fb before any printf! */
+	xenos_fb = 0LL;
+
 	printf("\nXeLL - Xenon linux loader 0.1\n");
 
 	printf(" * clearing BSS...\n");
