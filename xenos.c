@@ -1,6 +1,6 @@
 /* xenos.c - pseudo framebuffer driver for Xenos on Xbox 360
  *
- * Copyright (C) 2007 Georg Lukas <georg@boerde.de>
+ * Copyright (C) 2007, 2008 Georg Lukas <georg@boerde.de>
  *
  * Based on code by Felix Domke <tmbinc@elitedvb.net>
  *
@@ -10,16 +10,30 @@
 #include <types.h>
 #include <string.h>
 #include <vsprintf.h>
+#include "version.h"
 
+/* activate NATIVE_RESOLUTION to change the screen resolution and disable
+ * scaling. This won't work on 1080i */
 #define NATIVE_RESOLUTION
+
+/* activate BUFFER_PREINIT to enable storing of the xell output before the
+ * xenos framebuffer is initialized. This should help with SMP issues. */
+#define BUFFER_PREINIT
 
 int xenos_width, xenos_height,
     xenos_size;
 
-/* Colors in BGRA: background and foreground */
-uint32_t xenos_color[2] = { 0x00000000, 0xFFA0A000 };
 
-unsigned char *xenos_fb = 0LL;
+/* Colors in BGRA: background and foreground */
+#ifdef DEFAULT_THEME
+uint32_t xenos_color[2] = { 0x00000000, 0xFFC0C000 };
+#else
+uint32_t xenos_color[2] = { 0xD8444E00, 0xFF96A300 };
+#endif
+
+/* can't initialize xenos_fb with zero due to late BSS init,
+ * instead init it in xenos_preinit() */
+unsigned char *xenos_fb;
 
 int cursor_x, cursor_y,
     max_x, max_y;
@@ -62,15 +76,11 @@ void xenos_draw_char(const int x, const int y, const unsigned char c) {
 }
 
 void xenos_clrscr(const unsigned int bgra) {
-#if 0
-	unsigned int *fb = (unsigned int*)xenos_fb;
-	int count = xenos_width * xenos_height;
+	uint32_t *fb = (uint32_t*)xenos_fb;
+	int count = xenos_size;
 	while (count--)
 		*fb++ = bgra;
-#else
-	memset(xenos_fb, bgra, xenos_size*4);
 	dcache_flush(xenos_fb, xenos_size*4);
-#endif
 }
 
 void xenos_scroll32(const unsigned int lines) {
@@ -82,7 +92,12 @@ void xenos_scroll32(const unsigned int lines) {
 		       xenos_fb + bs*l,
 		       bs);
 	}
-	memset(xenos_fb + xenos_size*4 - bs*lines, 0, bs*lines);
+	/* fill up last lines with background color */
+	uint32_t *fb = (uint32_t*)(xenos_fb + xenos_size*4 - bs*lines);
+	uint32_t *end = (uint32_t*)(xenos_fb + xenos_size*4);
+	while (fb != end)
+		*fb++ = xenos_color[0];
+
 	dcache_flush(xenos_fb, xenos_size*4);
 }
 
@@ -105,9 +120,7 @@ void xenos_newline() {
 	}
 }
 
-void xenos_putch(const char c) {
-	if (!xenos_fb)
-		return;
+static inline void xenos_putch_impl(const char c) {
 	if (c == '\r') {
 		cursor_x = 0;
 	} else if (c == '\n') {
@@ -118,7 +131,60 @@ void xenos_putch(const char c) {
 		if (cursor_x >= max_x)
 			xenos_newline();
 	}
+}
+
+#ifdef BUFFER_PREINIT
+
+/* size of the srollback buffer */
+#define BUFFER 2048
+int bufpos = 0;
+unsigned char buffer[BUFFER];
+
+#endif
+
+void xenos_putch(const char c) {
+	if (!xenos_fb) {
+#ifdef BUFFER_PREINIT
+		buffer[bufpos++] = c;
+		if (bufpos == BUFFER)
+			bufpos--;
+#else
+		return;
+#endif
+	} else {
+		xenos_putch_impl(c);
+		dcache_flush(xenos_fb, xenos_size*4);
+	}
+}
+
+/* This was added to improve userfriendlyness */
+char* xenos_ascii = "\n"
+	" ======================================================\n"
+	" =        ==========================       ====      ==\n"
+	" =  ===============================  =====  ==   ==   =\n"
+	" =  ===============================  =========  ====  =\n"
+	" =  ========  =   ====   ====   ===       ====  ====  =\n"
+	" =      ====    =  ==  =  ==  =  ==   ===  ===  ====  =\n"
+	" =  ========  =======     ==     ==  =====  ==  ====  =\n"
+	" =  ========  =======  =====  =====  =====  ==  ====  =\n"
+	" =  ========  =======  =  ==  =  ===  ===   ==   ==   =\n"
+	" =  ========  ========   ====   =====     =====      ==\n"
+	" ======================================================\n"
+	"\n             XeLL - Xenon Linux Loader " VERSION "\n\n";
+
+void xenos_asciiart() {
+	char *p = xenos_ascii;
+	while (*p)
+		xenos_putch_impl(*p++);
 	dcache_flush(xenos_fb, xenos_size*4);
+}
+
+/* initialize xenos backbuffer and xenos_fb here */
+void xenos_preinit() {
+	xenos_fb = 0LL;
+#ifdef BUFFER_PREINIT
+	bufpos = 0;
+#endif
 }
 
 void xenos_init() {
@@ -175,9 +241,19 @@ void xenos_init() {
 	max_y = ai->height / 16;
 
 	/* XXX use memset_io() instead? */
-	xenos_clrscr(0);
+	xenos_clrscr(xenos_color[0]);
+
+#ifdef BUFFER_PREINIT
+	int pos;
+	for (pos = 0; pos < bufpos; pos++)
+		xenos_putch_impl(buffer[pos]);
+	if (bufpos == BUFFER - 1)
+		printf(" * Xenos FB BUFFER overrun!\n");
+#endif
 
 	printf(" * Xenos FB with %dx%d (%dx%d) at %p initialized.\n",
 		max_x, max_y, ai->width, ai->height, xenos_fb);
+
+	xenos_asciiart();
 }
 

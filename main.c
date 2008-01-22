@@ -5,10 +5,11 @@
 #include <network.h>
 #include <processor.h>
 #include <time.h>
+#include "version.h"
 
 extern void try_boot_cdrom(void);
+extern void xenos_preinit();
 extern void xenos_init();
-extern unsigned char* xenos_fb;
 extern void xenos_putch(const char c);
 
 #include "elf_abi.h"
@@ -128,6 +129,7 @@ void execute_elf_at(void *addr)
 	printf(" * Stop ethernet...\n");
 	enet_quiesce();
 	printf(" * GO (entrypoint: %p)\n", entry);
+	printf(" * Please wait a moment while the kernel loads...\n");
 
 	secondary_hold_addr = ((long)entry) | 0x8000000000000060UL;
 	
@@ -176,16 +178,14 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	int i;
 
 	/* init xenos_fb before any printf! */
-	xenos_fb = 0LL;
+	xenos_preinit();
 
-	printf("\nXeLL - Xenon linux loader 0.1\n");
+	printf("\nXeLL - Xenon linux loader " LONGVERSION "\n");
 
 	printf(" * clearing BSS...\n");
 		/* clear BSS, we're already late */
 	unsigned char *p = (unsigned char*)bss_start;
 	memset(p, 0, bss_end - bss_start);
-
-	xenos_init();
 
 	printf(" * Attempting to catch all CPUs...\n");
 
@@ -222,6 +222,8 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 		*(uint64_t*)(0x8000020000050068ULL + i * 0x1000) = 0x74;
 		while (*(volatile uint64_t*)(0x8000020000050050ULL + i * 0x1000) != 0x7C);
 	}
+
+	xenos_init();
 
 		/* remove any characters left from bootup */
 	while (kbhit())
