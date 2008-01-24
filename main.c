@@ -8,7 +8,6 @@
 #include "version.h"
 
 extern void try_boot_cdrom(void);
-extern void xenos_preinit();
 extern void xenos_init();
 extern void xenos_putch(const char c);
 
@@ -177,15 +176,11 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 
 	int i;
 
-	/* init xenos_fb before any printf! */
-	xenos_preinit();
-
-	printf("\nXeLL - Xenon linux loader " LONGVERSION "\n");
-
-	printf(" * clearing BSS...\n");
-		/* clear BSS, we're already late */
+	/* initialize BSS first. DO NOT INSERT CODE BEFORE THIS! */
 	unsigned char *p = (unsigned char*)bss_start;
 	memset(p, 0, bss_end - bss_start);
+
+	printf("\nXeLL - Xenon linux loader " LONGVERSION "\n");
 
 	printf(" * Attempting to catch all CPUs...\n");
 

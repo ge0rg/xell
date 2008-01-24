@@ -179,14 +179,6 @@ void xenos_asciiart() {
 	dcache_flush(xenos_fb, xenos_size*4);
 }
 
-/* initialize xenos backbuffer and xenos_fb here */
-void xenos_preinit() {
-	xenos_fb = 0LL;
-#ifdef BUFFER_PREINIT
-	bufpos = 0;
-#endif
-}
-
 void xenos_init() {
 	struct ati_info *ai = (struct ati_info*)0x200ec806100ULL;
 #ifdef NATIVE_RESOLUTION
