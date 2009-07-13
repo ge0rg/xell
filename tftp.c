@@ -55,8 +55,8 @@ static void tftp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_
 				memcpy(base + ptr, d + 4, pl);
 			current_block++;
 			
-			if (!(current_block & 15))
-				printf("%c\r", "|/-\\"[(current_block>>4)&3]);
+			if (!(current_block & 255))
+				printf("%c\r", "|/-\\"[(current_block>>8)&3]);
 			
 			ptr += pl;
 			if (pl < last_size)
