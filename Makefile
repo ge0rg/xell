@@ -1,4 +1,4 @@
-CROSS=powerpc64-linux-
+CROSS=xenon-
 CC=$(CROSS)gcc
 OBJCOPY=$(CROSS)objcopy
 LD=$(CROSS)ld
@@ -8,9 +8,10 @@ STRIP=$(CROSS)strip
 RELEASE=0.2
 
 # Configuration
-CFLAGS = -Wall -nostdinc -O2 -I. -Ilwip/include \
+CFLAGS = -Wall -O2 -I. -Ilwip/include \
 	-Iinclude -I./lwip/include/ipv4 -Ilwip/arch/xenon/include \
-	-m64 -mno-toc -DBYTE_ORDER=BIG_ENDIAN
+	-m64 -mno-toc -DBYTE_ORDER=BIG_ENDIAN -mno-altivec \
+	-I nocfe -D_CFE_=1 -DENDIAN_BIG=1
 	
 AFLAGS = -Iinclude -m64
 LDFLAGS = -nostdlib -n
@@ -30,11 +31,18 @@ LWIP_OBJS = ./lwip/core/tcp_in.o \
 	./lwip/core/raw.o \
 	./lwip/arch/xenon/lib.o  ./lwip/arch/xenon/netif/enet.o
 
+USB_OBJS = \
+	usb/ohci.o usb/usbd.o usb/usbdebug.o usb/usbdevs.o usb/usbhid.o usb/usbhub.o usb/usbmain.o  usb/usbmass.o \
+	nocfe/lib_malloc.o nocfe/lib_queue.o fat.o
+
+#	usb/dev_usb_asix.o usb/dev_usb_catc.o usb/dev_usb_klsi.o usb/dev_usb_pegasus.o usb/dev_usb_rtek.o usb/ohci.o usb/usbd.o usb/usbdebug.o usb/usbdevs.o usb/usbeth.o usb/usbhack.o usb/usbhid.o usb/usbhub.o usb/usbmain.o usb/usbmass.o usb/usbserial.o
+
 OBJS = startup2.o main.o string.o vsprintf.o ctype.o time.o  \
 	cache.o  $(LWIP_OBJS)  network.o tftp.o httpd/httpd.o httpd/vfs.o dtc.o \
-	cdrom.o xenos.o font_8x16.o
+	cdrom.o xenos.o font_8x16.o xenos_init.o xenon_smc.o  $(USB_OBJS) \
+	./diskio.o
 
-BUILD = xell-serial xell-readcd
+BUILD = xell-serial xell-readcd xell-1f
 
 TARGETS = $(foreach name,$(BUILD),$(addprefix $(name).,bin elf elf32))
 
