@@ -8,24 +8,21 @@
 #define tsrr 897
 #define tscr 921
 #define ctrlb 152
-.globl _start
-.extern start
-.globl __start_other
-_start:
-	b start_from_rom
 
-__start_other:
 start_from_rom:
 	or %r2, %r2, %r2 // normal priority
 
-		// disable interrupts
-	li %r13, 0
-	mtmsrd %r13, 1
+//	li %r2, 0
+//	mtspr 313, %r2 // hrmor
 
+		// disable interrupts (but enable vector available, gcc likes to use VMX
+		// for memset)
+	lis %r13, 0x200
+	mtmsrd %r13, 1
 
 	li %r3, 2
 	isync	
-	mtspr lpcr, %r2
+	mtspr lpcr, %r3
 	isync
 	li      %r3, 0x3FF
 	rldicr  %r3, %r3, 32,31
@@ -33,7 +30,6 @@ start_from_rom:
 	sync
 	isync
 	
-
 	mfspr %r10, hid1
 	li %r11, 3
 	rldimi %r10, %r11, 58,4     // enable icache
@@ -54,7 +50,7 @@ start_from_rom:
 	li %sp, 0
 	oris %sp, %sp, 0x8000
 	rldicr %sp, %sp, 32,31
-	oris %sp, %sp, 0x138
+	oris %sp, %sp, 0x1e00
 
 	mfspr %r3, pir
 	slwi %r4, %r3, 16  // 64k stack
@@ -64,10 +60,20 @@ start_from_rom:
 	cmpwi %r3, 0
 	bne hangon
 
-	lis %r3, start@h
+	lis %r3, 0x8000
+	rldicr  %r3, %r3, 32,31
+	oris %r3, %r3, start@h
 	ori %r3, %r3, start@l
 	ld %r2, 8(%r3)
-	ld %r3, 0(%r3)
+
+	lis %r3, 0x8000
+	sldi %r3, %r3, 32
+	oris %r3, %r3, 1f@h
+	ori %r3, %r3, 1f@l
+	mtctr %r3
+	bctr
+1:
+
 
 	mfspr %r3, pir
 	mfpvr %r5
@@ -98,6 +104,8 @@ putc:
 jump:
 	mtspr rmor, %r7
 	mtspr hrmor, %r7
+	isync
+	sync
 	mtsrr0 %r6
 
 		/* switch into real mode */
@@ -138,12 +146,12 @@ Idle:
 	
 	mfspr %r3, pir
 
-	cmpwi %r3, 1
+/*	cmpwi %r3, 1
 	beq stop
 	cmpwi %r3, 3
 	beq stop
 	cmpwi %r3, 5
-	beq stop
+	beq stop */
 
 	bctr
 
@@ -153,3 +161,25 @@ stop:
 	mtspr ctrlb, %r3
 	b 1b 
 
+
+set_hrmor:
+	mtspr rmor, %r3
+	mtspr hrmor, %r3
+	blr
+
+.globl _start
+.extern start
+.globl __start_other
+_start:
+	b start_from_rom
+
+
+. = _start + 0x60
+__start_other:
+	b start_from_rom
+
+.globl fix_hrmor
+fix_hrmor:
+	li %r3, 0
+	mtspr hrmor, %r3
+	blr
