@@ -38,6 +38,8 @@ typedef		__u16		u16;
 typedef		__s16		s16;
 typedef		__u32		u32;
 typedef		__s32		s32;
+typedef		__u64		u64;
+typedef		__s64		s64;
 
 typedef		__u8		uint8_t;
 typedef		__u16		uint16_t;
@@ -45,7 +47,5 @@ typedef		__u32		uint32_t;
 typedef		__u64		uint64_t;
 typedef		__u64		u_int64_t;
 typedef		__s64		int64_t;
-
-typedef   int     time_t;
 
 #endif /* _LINUX_TYPES_H */
