@@ -14,7 +14,10 @@
 
 /* activate NATIVE_RESOLUTION to change the screen resolution and disable
  * scaling. This won't work on 1080i */
-#define NATIVE_RESOLUTION
+//#define NATIVE_RESOLUTION 1
+
+/* reinit xenos from scratch. so far this supports only 640x480 */
+#define REINIT_VIDEO 1
 
 /* activate BUFFER_PREINIT to enable storing of the xell output before the
  * xenos framebuffer is initialized. This should help with SMP issues. */
@@ -183,9 +186,10 @@ void xenos_asciiart() {
 
 void xenos_init() {
 	struct ati_info *ai = (struct ati_info*)0x80000200ec806100ULL;
+
+#if REINIT_VIDEO
 	xenos_lowlevel_init();
-	
-#ifdef NATIVE_RESOLUTION
+#elif NATIVE_RESOLUTION
 	uint32_t *gfx = (uint32_t*)0x80000200ec806000ULL;
 
 	/* setup native resolution, i.e. disable scaling */
