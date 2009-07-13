@@ -22,27 +22,27 @@ extern char getchar(void);
 
 void ide_out8(int reg, unsigned char d)
 {
-	*(volatile unsigned char*)(0x200ea001200ULL + reg) = d;
+	*(volatile unsigned char*)(0x80000200ea001200ULL + reg) = d;
 }
 
 void ide_out16(int reg, unsigned short d)
 {
-	*(volatile unsigned short*)(0x200ea001200ULL + reg) = d;
+	*(volatile unsigned short*)(0x80000200ea001200ULL + reg) = d;
 }
 
 void ide_out32(int reg, unsigned int d)
 {
-	*(volatile unsigned int*)(0x200ea001200ULL + reg) = d;
+	*(volatile unsigned int*)(0x80000200ea001200ULL + reg) = d;
 }
 
 unsigned char ide_in8(int reg)
 {
-	return *(volatile unsigned char*)(0x200ea001200ULL + reg);
+	return *(volatile unsigned char*)(0x80000200ea001200ULL + reg);
 }
 
 unsigned int ide_in32(int reg)
 {
-	return *(volatile unsigned int*)(0x200ea001200ULL + reg);
+	return *(volatile unsigned int*)(0x80000200ea001200ULL + reg);
 }
 
 int ide_waitready()
