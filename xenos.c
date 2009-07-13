@@ -23,6 +23,8 @@
 int xenos_width, xenos_height,
     xenos_size;
 
+void xenos_lowlevel_init(void);
+
 
 /* Colors in BGRA: background and foreground */
 #ifdef DEFAULT_THEME
@@ -180,9 +182,11 @@ void xenos_asciiart() {
 }
 
 void xenos_init() {
-	struct ati_info *ai = (struct ati_info*)0x200ec806100ULL;
+	struct ati_info *ai = (struct ati_info*)0x80000200ec806100ULL;
+	xenos_lowlevel_init();
+	
 #ifdef NATIVE_RESOLUTION
-	uint32_t *gfx = (uint32_t*)0x200ec806000ULL;
+	uint32_t *gfx = (uint32_t*)0x80000200ec806000ULL;
 
 	/* setup native resolution, i.e. disable scaling */
 	int vxres = gfx[0x134/4];
@@ -222,7 +226,7 @@ void xenos_init() {
 		gfx[0x138/4] = nyres;
 	}
 #endif
-	xenos_fb = (unsigned char*)(long)(ai->base);
+	xenos_fb = (unsigned char*)((long)(ai->base) | 0x8000000000000000ULL);
 	/* round up size to tiles of 32x32 */
 	xenos_width = ((ai->width+31)>>5)<<5;
 	xenos_height = ((ai->height+31)>>5)<<5;
