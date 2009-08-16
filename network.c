@@ -47,9 +47,9 @@ void network_init()
 	
 	netif_set_default(&netif);
 
-	IP4_ADDR(&ipaddr, 10, 0, 0, 209);
-	IP4_ADDR(&gw, 0, 0, 0, 0);
-	IP4_ADDR(&netmask, 255, 0, 0, 0);
+	IP4_ADDR(&ipaddr, 10, 0, 120, 209);
+	IP4_ADDR(&gw, 10, 0, 120, 1);
+	IP4_ADDR(&netmask, 255, 255, 255, 0);
 	netif_set_addr(&netif, &ipaddr, &netmask, &gw);
 	netif_set_up(&netif);
 

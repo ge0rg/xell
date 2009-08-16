@@ -6,6 +6,7 @@
 #include <processor.h>
 #include <time.h>
 #include "version.h"
+#include <diskio.h>
 
 extern void try_boot_cdrom(void);
 extern void xenos_init();
@@ -166,12 +167,16 @@ extern char __start_other[], __exception[];
 
 #define HRMOR (0x10000000000ULL)
 
+#define LOADER_RAW         0x8000000004000000ULL
+#define LOADER_MAXSIZE     0x1000000
+
 void syscall();
+void fix_hrmor();
 
 int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 {
 	secondary_hold_addr = 0;
-
+	
 	int exc[]={0x100, 0x200, 0x300, 0x380, 0x400, 0x480, 0x500, 0x600, 0x700, 0x800, 0x900, 0x980, 0xC00, 0xD00, 0xF00, 0xF20, 0x1300, 0x1600, 0x1700, 0x1800};
 
 	int i;
@@ -184,18 +189,20 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 
 	printf(" * Attempting to catch all CPUs...\n");
 
+#if 1
 	for (i=0; i<sizeof(exc)/sizeof(*exc); ++i)
 		place_jump((void*)HRMOR + exc[i], __start_other);
+#endif
 
 	place_jump((void*)0x8000000000000700, __start_other);
 	
 	while (get_online_processors() != 0x3f)
 	{
-		printf("CPUs online: %02x..\r", get_online_processors()); mdelay(1000);
-		if ((get_online_processors() & 0x15) == 0x15)
+		printf("CPUs online: %02x..\n", get_online_processors()); mdelay(10);
+//		if ((get_online_processors() & 0x15) == 0x15)
 		{
-			for (i=0; i<sizeof(exc)/sizeof(*exc); ++i)
-				place_jump((void*)0x8000000000000000ULL + exc[i], __start_other);
+//			for (i=0; i<sizeof(exc)/sizeof(*exc); ++i)
+//				place_jump((void*)0x8000000000000000ULL + exc[i], __start_other);
 			
 			for (i=1; i<6; ++i)
 			{
@@ -209,7 +216,10 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 		}
 	}
 	
+	printf("CPUs online: %02x..\n", get_online_processors());
 	printf(" * success.\n");
+	
+	fix_hrmor();
 
 			/* re-reset interrupt controllers. especially, remove their pending IPI IRQs. */
 	for (i=1; i<6; ++i)
@@ -218,28 +228,64 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 		while (*(volatile uint64_t*)(0x8000020000050050ULL + i * 0x1000) != 0x7C);
 	}
 
+	printf(" * xenos init\n");
 	xenos_init();
 
 		/* remove any characters left from bootup */
+	printf(" * remove input\n");
 	while (kbhit())
 		getchar();
 	
+	printf(" * network init\n");
 	network_init();
 
 		/* display some cpu info */
 	printf(" * CPU PVR: %08lx\n", mfspr(287));
 
+#if 1
 	printf(" * FUSES - write them down and keep them safe:\n");
 	for (i=0; i<12; ++i)
 		printf("fuseset %02d: %016lx\n", i, *(unsigned long*)(0x8000020000020000 + (i * 0x200)));
+#endif
 
 	if (get_online_processors() != 0x3f)
 		printf("WARNING: not all processors could be woken up.\n");
 
+	kmem_init();
+	usb_init();
+	printf(" * Waiting for USB...\n");
+	
+	tb_t s, e;
+	mftb(&s);
+	struct bdev *f;
+	do {
+		usb_do_poll();
+		network_poll();
+		f = bdev_open("uda");
+		if (f)
+			break;
+		mftb(&e);
+	} while (tb_diff_sec(&e, &s) < 5);
+
+	if (f)
+	{
+		if (fat_init(f))
+			printf(" * FAT init failed\n");
+		else if (fat_open("/xenon.elf"))
+			printf("fat open of /xenon.elf failed\n");
+		else
+		{
+			printf(" * fat open okay, loading file...\n");
+			int r = fat_read(LOADER_RAW, LOADER_MAXSIZE);
+			printf(" * executing...\n");
+			execute_elf_at((void*)LOADER_RAW);
+		}
+	}
+
+	printf(" * try booting tftp\n");
+	boot_tftp("10.0.120.78", "/tftpboot/xenon");
 	printf(" * try booting from CDROM\n");
 	try_boot_cdrom();
-	printf(" * try booting tftp\n");
-	boot_tftp("10.0.0.1", "/tftpboot/xenon");
 	printf(" * HTTP listen\n");
 	while (1) network_poll();
 
