@@ -187,3 +187,10 @@ void xenon_gpio_set(uint32_t clear, uint32_t set)
 	write32(SMC_BASE + 0x34, (read32(SMC_BASE + 0x34) &~ clear) | set);
 }
 
+int xenon_smc_read_avpack(void)
+{
+	uint8_t buf[16] = {0x0f};
+	xenon_smc_send_message(buf);
+	xenon_smc_receive_response(buf);
+	return buf[1];
+}
