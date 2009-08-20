@@ -219,6 +219,8 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	printf("CPUs online: %02x..\n", get_online_processors());
 	printf(" * success.\n");
 	
+	xenon_smc_start_bootanim();
+	
 	fix_hrmor();
 
 			/* re-reset interrupt controllers. especially, remove their pending IPI IRQs. */
