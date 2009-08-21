@@ -33,7 +33,7 @@ LWIP_OBJS = ./lwip/core/tcp_in.o \
 
 USB_OBJS = \
 	usb/ohci.o usb/usbd.o usb/usbdebug.o usb/usbdevs.o usb/usbhid.o usb/usbhub.o usb/usbmain.o  usb/usbmass.o \
-	nocfe/lib_malloc.o nocfe/lib_queue.o fat.o
+	nocfe/lib_malloc.o nocfe/lib_queue.o fat.o flash.o
 
 #	usb/dev_usb_asix.o usb/dev_usb_catc.o usb/dev_usb_klsi.o usb/dev_usb_pegasus.o usb/dev_usb_rtek.o usb/ohci.o usb/usbd.o usb/usbdebug.o usb/usbdevs.o usb/usbeth.o usb/usbhack.o usb/usbhid.o usb/usbhub.o usb/usbmain.o usb/usbmass.o usb/usbserial.o
 

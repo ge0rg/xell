@@ -7,10 +7,16 @@
 #include <time.h>
 #include "version.h"
 #include <diskio.h>
+#include "flash.h"
 
 extern void try_boot_cdrom(void);
 extern void xenos_init();
 extern void xenos_putch(const char c);
+
+static inline uint32_t bswap32(uint32_t t)
+{
+	return ((t & 0xFF) << 24) | ((t & 0xFF00) << 8) | ((t & 0xFF0000) >> 16) | ((t & 0xFF000000) >> 24);
+}
 
 #include "elf_abi.h"
 
@@ -282,6 +288,52 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 			printf(" * executing...\n");
 			execute_elf_at((void*)LOADER_RAW);
 		}
+		
+#if 0
+			/* REALLY, this code needs to be improved. We need badsector-mapping, and jasper support. */
+		if (fat_open("/update_xell.bin"))
+		{
+			printf(" * found XeLL update. press power NOW if you don't want to update.\n");
+			delay(15);
+			fat_read(LOADER_RAW, LOADER_MAXSIZE);
+			printf(" * flashing @1MB...\n");
+			if (sfcx_readreg(0) != 0x14801901)
+			{
+				printf(" * unknown flash config %08x, refuse to flash.\n", sfcx_readreg(0));
+				goto fail;
+			}
+			
+			const unsigned char elfhdr[] = {0x7f, 'E', 'L', 'F'};
+			if (!memcmp((void*)LOADER_RAW, elfhdr, 4))
+			{
+				printf(" * really, we don't need an elf.\n");
+				goto fail;
+			}
+
+			int eraseblock_size = 16384; // FIXME for largeblock
+
+			int addr;
+#define OFFSET 1024*1024
+			
+			for (addr = 0; addr < 0x40000; addr += 0x200)
+			{
+				printf("%08x\r", addr);
+				if (!(addr % eraseblock_size))
+					flash_erase(addr + OFFSET);
+				unsigned char block[0x210];
+				memcpy(block, (void*)LOADER_RAW + i, 0x200);
+				memset(block + 0x200, 0, 0x10);
+				*(int*)block = bswap32((addr + OFFSET) / eraseblock_size);
+				block[0x205] = 0xFF;
+				calcecc(block);
+				write_page(addr + OFFSET, block);
+			}
+			printf(" * update done\n");
+
+fail:
+			while (1);
+		}
+#endif
 	}
 
 	printf(" * try booting tftp\n");
