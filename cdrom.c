@@ -61,11 +61,6 @@ int ide_waitready()
 int atapi_packet(unsigned char *packet, unsigned char *data, int data_len)
 {
 	ide_out8(ATAPI_DRIVE_SELECT, 0xA0);
-	if (ide_waitready())
-	{
-		printf(" ! initial waitready failed!\n");
-		return -1;
-	}
 
 	data_len /= 2;
 
@@ -296,8 +291,6 @@ void try_boot_cdrom(void)
 {
 	int sector, size, kernel_sector, kernel_size;
 	struct pvd_s *pvd = 0;
-	
-	set_modeb();
 	
 	printf(" * reading CD/DVD...\n");
 	
