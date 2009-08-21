@@ -8,7 +8,7 @@
 
 static inline uint32_t bswap32(uint32_t t)
 {
-	return ((t & 0xFF) << 24) | ((t & 0xFF00) << 8) | ((t & 0xFF0000) >> 16) | ((t & 0xFF000000) >> 24);
+	return ((t & 0xFF) << 24) | ((t & 0xFF00) << 8) | ((t & 0xFF0000) >> 8) | ((t & 0xFF000000) >> 24);
 }
 
 void sfcx_writereg(int addr, unsigned long data)
