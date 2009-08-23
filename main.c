@@ -7,7 +7,11 @@
 #include <time.h>
 #include "version.h"
 
-extern void try_boot_cdrom(void);
+#define MENU
+/* cdrom.c: */
+extern int iso9660_load_file(char *filename, void* addr);
+extern void try_boot_cdrom(char *);
+/* xenos.c: */
 extern void xenos_init();
 extern void xenos_putch(const char c);
 
@@ -237,7 +241,7 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 		printf("WARNING: not all processors could be woken up.\n");
 
 	printf(" * try booting from CDROM\n");
-	try_boot_cdrom();
+	try_boot_cdrom("vmlinux");
 	printf(" * try booting tftp\n");
 	boot_tftp("10.0.0.1", "/tftpboot/xenon");
 	printf(" * HTTP listen\n");
