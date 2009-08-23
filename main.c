@@ -245,6 +245,7 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	printf(" * try booting tftp\n");
 	boot_tftp("10.0.0.1", "/tftpboot/xenon");
 	printf(" * HTTP listen\n");
+	print_network_config();
 	while (1) network_poll();
 
 	return 0;

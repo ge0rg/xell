@@ -12,8 +12,8 @@
 #include "lwip/tcp.h"
 #include "netif/etharp.h"
 
-static struct netif netif;
-static struct ip_addr ipaddr, netmask, gw;
+struct netif netif;
+struct ip_addr ipaddr, netmask, gw;
 static tb_t now, start;
 
 extern void enet_poll(struct netif *netif);
@@ -57,6 +57,13 @@ void network_init()
 	printf("starting httpd server..");
 	httpd_start();
 	printf("ok!\n");
+}
+
+void print_network_config()
+{
+#define NTOA(ip) (int)((ip.addr>>24)&0xff), (int)((ip.addr>>16)&0xff), (int)((ip.addr>>8)&0xff), (int)(ip.addr&0xff)
+	printf(" * XeLL network config: %d.%d.%d.%d / %d.%d.%d.%d\n",
+		NTOA(ipaddr), NTOA(netmask));
 }
 
 void network_poll()
