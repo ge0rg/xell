@@ -9,7 +9,11 @@
 #include <diskio.h>
 #include "flash.h"
 
-extern void try_boot_cdrom(void);
+#define MENU
+/* cdrom.c: */
+extern int iso9660_load_file(char *filename, void* addr);
+extern void try_boot_cdrom(char *);
+/* xenos.c: */
 extern void xenos_init();
 extern void xenos_putch(const char c);
 
@@ -339,7 +343,7 @@ fail:
 	printf(" * try booting tftp\n");
 	boot_tftp("10.0.120.78", "/tftpboot/xenon");
 	printf(" * try booting from CDROM\n");
-	try_boot_cdrom();
+	try_boot_cdrom("vmlinux");
 	printf(" * HTTP listen\n");
 	while (1) network_poll();
 

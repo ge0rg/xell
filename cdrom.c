@@ -287,9 +287,10 @@ int read_directory(int sector, int len, char *filename, int *lba, int *size)
 
 extern int execute_elf_at(void *dst, int len, const char *args);
 
-void try_boot_cdrom(void)
+int iso9660_load_file(char *filename, void* addr)
 {
-	int sector, size, kernel_sector, kernel_size;
+	int sector, size, file_sector, file_size;
+	char fnamebuf[258];
 	struct pvd_s *pvd = 0;
 	
 	printf(" * reading CD/DVD...\n");
@@ -297,14 +298,14 @@ void try_boot_cdrom(void)
 	if (read_sector(sector_buffer, 16, 1))
 	{
 		printf(" ! failed to read PVD\n");
-		return;
+		return -1;
 	}
 
 	pvd = (void*)sector_buffer;
 	if (memcmp(sector_buffer, "\1CD001\1", 8))
 	{
 		printf(" ! no iso9660!\n");
-		return;
+		return -1;
 	}
 	
 	printf("root_direntry offset: %d\n", (int)(&((struct pvd_s *)0)->root_direntry));
@@ -314,46 +315,62 @@ void try_boot_cdrom(void)
 	if (!sector)
 	{
 		printf(" ! root direntry not found\n");
-		return;
+		return -1;
 	}
 	
 	printf(" ! root at lba=%02x, size=%d\n", sector, size);
-	if (
-		read_directory(sector, size, "vmlinux;1", &kernel_sector, &kernel_size) && 
-		read_directory(sector, size, "vmlinux.;1", &kernel_sector, &kernel_size))
+
+	strcpy(fnamebuf, filename);
+	strcat(fnamebuf, ";1");
+	if (read_directory(sector, size, fnamebuf, &file_sector, &file_size))
 	{
-		printf(" ! xenon kernel image not found\n");
-		return;
+		strcpy(fnamebuf, filename);
+		strcat(fnamebuf, ".;1");
+		if (read_directory(sector, size, fnamebuf, &file_sector, &file_size))
+		{
+			printf(" ! '%s' not found\n", filename);
+			return -1;
+		}
 	}
 	
-	printf(" ! found kernel at lba=%d, size=%d\n", kernel_sector, kernel_size);
+	printf(" ! found '%s' at lba=%d, size=%d\n", fnamebuf, file_sector, file_size);
 	
-	printf(" ! loading kernel...\n");
+	printf(" ! loading file...\n");
 
-	void *addr = (void*)LOADER_RAW;
-	
-	int s = kernel_size;
+	int s = file_size;
 	
 	while (1)
 	{
-		printf("\r * %08x -> %p... ", kernel_sector, addr);
+		printf("\r * %08x -> %p... ", file_sector, addr);
 		
-		int num = (kernel_size + 0x7ff) / 0x800;
+		int num = (s + 0x7ff) / 0x800;
 		if (num > 64)
 			num = 64;
 		
-		if (read_sector(addr, kernel_sector, num))
+		if (read_sector(addr, file_sector, num))
 		{
 			printf("\n ! read sector failed!\n");
 			break;
 		}
 		
-		addr += num * 0x800; kernel_sector+=num; kernel_size -= num * 0x800;
-		if (kernel_size <= 0)
+		addr += num * 0x800; file_sector+=num; s -= num * 0x800;
+		if (s <= 0)
 		{
-			printf("\n * done! executing kernel!\n");
-			execute_elf_at((void*)LOADER_RAW, s, "");
-			return;
+			printf("\n * done!\n");
+			return file_size;
 		}
+	}
+	return -1;
+}
+
+void try_boot_cdrom(char *filename)
+{
+	int size;
+	set_modeb();
+	
+	if (!filename)
+		filename = "vmlinux";
+	if ((size = iso9660_load_file(filename, (void*)LOADER_RAW)) >= 0) {
+		execute_elf_at((void*)LOADER_RAW, size, "");
 	}
 }
