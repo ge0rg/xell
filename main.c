@@ -178,7 +178,9 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 {
 	secondary_hold_addr = 0;
 
+#ifndef TARGET_xell
 	int exc[]={0x100, 0x200, 0x300, 0x380, 0x400, 0x480, 0x500, 0x600, 0x700, 0x800, 0x900, 0x980, 0xC00, 0xD00, 0xF00, 0xF20, 0x1300, 0x1600, 0x1700, 0x1800};
+#endif
 
 	int i;
 
@@ -188,6 +190,9 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 
 	printf("\nXeLL - Xenon linux loader " LONGVERSION "\n");
 
+#ifdef TARGET_xell
+	printf(" * WARNING: Bootstrapped XeLL not catching CPUs...\n");
+#else
 	printf(" * Attempting to catch all CPUs...\n");
 
 	for (i=0; i<sizeof(exc)/sizeof(*exc); ++i)
@@ -216,6 +221,7 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	}
 	
 	printf(" * success.\n");
+#endif
 
 			/* re-reset interrupt controllers. especially, remove their pending IPI IRQs. */
 	for (i=1; i<6; ++i)

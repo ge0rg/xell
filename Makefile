@@ -34,7 +34,7 @@ OBJS = startup2.o main.o string.o vsprintf.o ctype.o time.o  \
 	cache.o  $(LWIP_OBJS)  network.o tftp.o httpd/httpd.o httpd/vfs.o dtc.o \
 	cdrom.o xenos.o font_8x16.o smc.o menu.o
 
-BUILD = xell-serial xell-readcd
+BUILD = xell-serial xell-readcd xell-xell
 
 TARGETS = $(foreach name,$(BUILD),$(addprefix $(name).,bin elf elf32))
 
@@ -69,6 +69,7 @@ xenos.o: version.h
 	$(CC) $(AFLAGS) -c -o $@ $*.S
 
 %.elf: %.lds $(OBJS)
+	$(CC) -D$(patsubst xell-%,TARGET_%,$*) $(CFLAGS) -c -o main.o main.c
 	$(CC) -n -T $< -nostdlib -m64 -o $@ $(OBJS)
 
 %.elf32: %.elf
