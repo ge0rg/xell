@@ -32,7 +32,7 @@ LWIP_OBJS = ./lwip/core/tcp_in.o \
 
 OBJS = startup2.o main.o string.o vsprintf.o ctype.o time.o  \
 	cache.o  $(LWIP_OBJS)  network.o tftp.o httpd/httpd.o httpd/vfs.o dtc.o \
-	cdrom.o xenos.o font_8x16.o
+	cdrom.o xenos.o font_8x16.o smc.o menu.o
 
 BUILD = xell-serial xell-readcd
 

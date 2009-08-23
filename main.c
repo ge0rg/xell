@@ -14,6 +14,8 @@ extern void try_boot_cdrom(char *);
 /* xenos.c: */
 extern void xenos_init();
 extern void xenos_putch(const char c);
+/* menu.c: */
+extern void main_menu();
 
 #include "elf_abi.h"
 
@@ -23,7 +25,7 @@ static void putch(unsigned char c)
 	*(volatile uint32_t*)0x80000200ea001014 = (c << 24) & 0xFF000000;
 }
 
-static int kbhit(void)
+int kbhit(void)
 {
 	uint32_t status;
 	
@@ -239,6 +241,8 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 
 	if (get_online_processors() != 0x3f)
 		printf("WARNING: not all processors could be woken up.\n");
+
+	main_menu();
 
 	printf(" * try booting from CDROM\n");
 	try_boot_cdrom("vmlinux");
