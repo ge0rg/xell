@@ -51,7 +51,7 @@ long simple_strtol(const char *cp,char **endp,unsigned int base)
 /* we use this so that we can do without the ctype library */
 #define is_digit(c)	((c) >= '0' && (c) <= '9')
 
-static int skip_atoi(const char **s)
+int skip_atoi(const char **s)
 {
 	int i=0;
 

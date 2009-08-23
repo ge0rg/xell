@@ -53,7 +53,6 @@ int strnicmp(const char *s1, const char *s2, size_t len)
 }
 #endif
 
-char * ___strtok;
 #endif
 
 #ifndef __HAVE_ARCH_STRCPY
@@ -249,8 +248,9 @@ size_t strnlen(const char * s, size_t count)
 }
 #endif
 
-#if 0
+#if 1
 #ifndef __HAVE_ARCH_STRSPN
+char * ___strtok;
 /**
  * strspn - Calculate the length of the initial substring of @s which only
  * 	contain letters in @accept

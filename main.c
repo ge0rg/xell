@@ -345,6 +345,7 @@ fail:
 	printf(" * try booting from CDROM\n");
 	try_boot_cdrom("vmlinux");
 	printf(" * HTTP listen\n");
+	print_network_config();
 	while (1) network_poll();
 
 	return 0;
