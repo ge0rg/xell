@@ -18,7 +18,7 @@ static inline u32 le32(const u8 *p)
 	return p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
 }
 		
-#include <stdio.h>
+//#include <stdio.h>
 
 #define RAW_BUF 0x200
 #define MAX_SECTS 8
