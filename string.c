@@ -72,7 +72,6 @@ char * strcpy(char * dest,const char *src)
 }
 #endif
 
-#if 0
 #ifndef __HAVE_ARCH_STRNCPY
 /**
  * strncpy - Copy a length-limited, %NUL-terminated string
@@ -95,6 +94,7 @@ char * strncpy(char * dest,const char *src,size_t count)
 }
 #endif
 
+#if 0
 #ifndef __HAVE_ARCH_STRCAT
 /**
  * strcat - Append one %NUL-terminated string to another

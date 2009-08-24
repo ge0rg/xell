@@ -13,6 +13,9 @@ extern void try_boot_cdrom(void);
 extern void xenos_init();
 extern void xenos_putch(const char c);
 
+extern char *network_boot_file_name();
+extern char *network_boot_server_name();
+
 static inline uint32_t bswap32(uint32_t t)
 {
 	return ((t & 0xFF) << 24) | ((t & 0xFF00) << 8) | ((t & 0xFF0000) >> 8) | ((t & 0xFF000000) >> 24);
@@ -243,7 +246,7 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	printf(" * remove input\n");
 	while (kbhit())
 		getchar();
-	
+		
 	printf(" * network init\n");
 	network_init();
 
@@ -337,7 +340,7 @@ fail:
 	}
 
 	printf(" * try booting tftp\n");
-	boot_tftp("10.0.120.78", "/tftpboot/xenon");
+	boot_tftp(network_boot_server_name(), network_boot_file_name());
 	printf(" * try booting from CDROM\n");
 	try_boot_cdrom();
 	printf(" * HTTP listen\n");
