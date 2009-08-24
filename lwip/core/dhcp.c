@@ -234,11 +234,13 @@ static err_t dhcp_select(struct netif *netif)
     dhcp_option(dhcp, DHCP_OPTION_SERVER_ID, 4);
     dhcp_option_long(dhcp, ntohl(dhcp->server_ip_addr.addr));
 
-    dhcp_option(dhcp, DHCP_OPTION_PARAMETER_REQUEST_LIST, 4/*num options*/);
+    dhcp_option(dhcp, DHCP_OPTION_PARAMETER_REQUEST_LIST, 6/*num options*/);
     dhcp_option_byte(dhcp, DHCP_OPTION_SUBNET_MASK);
     dhcp_option_byte(dhcp, DHCP_OPTION_ROUTER);
     dhcp_option_byte(dhcp, DHCP_OPTION_BROADCAST);
     dhcp_option_byte(dhcp, DHCP_OPTION_DNS_SERVER);
+    dhcp_option_byte(dhcp, DHCP_OPTION_TFTP_SERVERNAME);
+    dhcp_option_byte(dhcp, DHCP_OPTION_BOOTFILE);
 
     dhcp_option_trailer(dhcp);
     /* shrink the pbuf to the actual content length */
@@ -457,15 +459,24 @@ static void dhcp_handle_ack(struct netif *netif)
  * Patch #1308
  * TODO: we must check if the file field is not overloaded by DHCP options!
  */
-#if 0
-  /* boot server address */
-  ip_addr_set(&dhcp->offered_si_addr, &dhcp->msg_in->siaddr);
-  /* boot file name */
-  if (dhcp->msg_in->file[0]) {
-    dhcp->boot_file_name = mem_malloc(strlen(dhcp->msg_in->file) + 1);
-    strcpy(dhcp->boot_file_name, dhcp->msg_in->file);
+ 
+  option_ptr = dhcp_get_option_ptr(dhcp, DHCP_OPTION_TFTP_SERVERNAME);
+  if (option_ptr != NULL) {
+    if (option_ptr[1] == 4) {
+      dhcp->boot_server_name = mem_malloc(16);
+      sprintf(dhcp->boot_server_name, "%u.%u.%u.%u",
+        option_ptr[2], option_ptr[3], option_ptr[4], option_ptr[5]);
+    } else {  
+      dhcp->boot_server_name = mem_malloc(option_ptr[1] + 1);
+      strncpy(dhcp->boot_server_name, (char *) &option_ptr[2], option_ptr[1]);
+    }
   }
-#endif
+  
+  option_ptr = dhcp_get_option_ptr(dhcp, DHCP_OPTION_BOOTFILE);
+  if (option_ptr != NULL) {
+    dhcp->boot_file_name = mem_malloc(option_ptr[1] + 1);
+    strncpy(dhcp->boot_file_name, (char *) &option_ptr[2], option_ptr[1]);
+  }
 
   /* subnet mask */
   option_ptr = dhcp_get_option_ptr(dhcp, DHCP_OPTION_SUBNET_MASK);
@@ -720,11 +731,13 @@ static err_t dhcp_discover(struct netif *netif)
     dhcp_option(dhcp, DHCP_OPTION_MAX_MSG_SIZE, DHCP_OPTION_MAX_MSG_SIZE_LEN);
     dhcp_option_short(dhcp, 576);
 
-    dhcp_option(dhcp, DHCP_OPTION_PARAMETER_REQUEST_LIST, 4/*num options*/);
+    dhcp_option(dhcp, DHCP_OPTION_PARAMETER_REQUEST_LIST, 6/*num options*/);
     dhcp_option_byte(dhcp, DHCP_OPTION_SUBNET_MASK);
     dhcp_option_byte(dhcp, DHCP_OPTION_ROUTER);
     dhcp_option_byte(dhcp, DHCP_OPTION_BROADCAST);
     dhcp_option_byte(dhcp, DHCP_OPTION_DNS_SERVER);
+    dhcp_option_byte(dhcp, DHCP_OPTION_TFTP_SERVERNAME);
+    dhcp_option_byte(dhcp, DHCP_OPTION_BOOTFILE);
 
     dhcp_option_trailer(dhcp);
 
