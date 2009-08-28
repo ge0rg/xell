@@ -626,19 +626,22 @@ void xenos_autoset_mode(void)
 {
 	int mode = MODE_PAL60;
 	int avpack = xenon_smc_read_avpack();
+
 	printf("AVPACK detected: %02x\n", avpack);
-	switch (avpack&0xF)
+	switch ((avpack>>2) & 7)
 	{
-	case 0x3: // normal (composite)
+	case 1: // Scart
+	case 5: // Composite-only
+	case 0: // normal (composite)
 		mode = MODE_PAL60;
 		break;
-	case 0xF: // HDTV
+	case 3: // HDTV
 		mode = MODE_PAL60; // is fine for that, too.
 		break;
-	case 0xb: // VGA
+	case 6: // VGA
 		mode = MODE_VGA_1024x768;
 		break;
-	case 0xC: // no AV pack, revert to composite.
+	case 7: // no AV pack, revert to composite.
 		mode = MODE_PAL60;
 		break;
 	default:
@@ -649,9 +652,15 @@ void xenos_autoset_mode(void)
 			mdelay(1000);
 			xenon_smc_set_led(1, table[(avpack>>6) & 3]);
 			mdelay(1000);
+			xenon_smc_set_led(1, 0);
+			mdelay(1000);
 			xenon_smc_set_led(1, table[(avpack>>4) & 3]);
 			mdelay(1000);
+			xenon_smc_set_led(1, 0);
+			mdelay(1000);
 			xenon_smc_set_led(1, table[(avpack>>2) & 3]);
+			mdelay(1000);
+			xenon_smc_set_led(1, 0);
 			mdelay(1000);
 			xenon_smc_set_led(1, table[(avpack>>0) & 3]);
 			mdelay(1000);
