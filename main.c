@@ -20,7 +20,7 @@ extern void xenos_putch(const char c);
 extern char *network_boot_file_name();
 extern char *network_boot_server_name();
 
-static inline uint32_t bswap32(uint32_t t)
+static inline uint32_t bswap_32(uint32_t t)
 {
 	return ((t & 0xFF) << 24) | ((t & 0xFF00) << 8) | ((t & 0xFF0000) >> 8) | ((t & 0xFF000000) >> 24);
 }
@@ -280,10 +280,12 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 		if (f)
 			break;
 		mftb(&e);
-	} while (tb_diff_sec(&e, &s) < 5);
+	} while (tb_diff_sec(&e, &s) < 50);
 
 	if (f)
 	{
+		extern u32 fat_file_size;
+		
 		if (fat_init(f))
 			printf(" * FAT init failed\n");
 		else if (fat_open("/xenon.elf"))
@@ -296,17 +298,27 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 			execute_elf_at((void*)LOADER_RAW);
 		}
 		
-#if 0
-			/* REALLY, this code needs to be improved. We need badsector-mapping, and jasper support. */
-		if (fat_open("/update_xell.bin"))
+#if 1
+		if (!fat_open("/updxell.bin"))
 		{
 			printf(" * found XeLL update. press power NOW if you don't want to update.\n");
 			delay(15);
 			fat_read(LOADER_RAW, LOADER_MAXSIZE);
 			printf(" * flashing @1MB...\n");
-			if (sfcx_readreg(0) != 0x14801901)
+
+			sfcx_writereg(0, sfcx_readreg(0) &~ (4|8|0x3c0));
+			if (sfcx_readreg(0) != 0x01198010)
 			{
 				printf(" * unknown flash config %08x, refuse to flash.\n", sfcx_readreg(0));
+				goto fail;
+			}
+			
+			unsigned char hdr[0x210];
+			readsector(hdr, 0, 0);
+			if (memcmp(hdr + 0x10, "zeropair image, version=00, ", 0x1c))
+			{
+				printf(" * unknown hackimage version.\n");
+				printf("%s\n", hdr + 0x20);
 				goto fail;
 			}
 			
@@ -322,18 +334,42 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 			int addr;
 #define OFFSET 1024*1024
 			
-			for (addr = 0; addr < 0x40000; addr += 0x200)
+			for (addr = 0; addr < 0x40000; addr += eraseblock_size)
 			{
-				printf("%08x\r", addr);
-				if (!(addr % eraseblock_size))
-					flash_erase(addr + OFFSET);
+				int flash_addr = addr + OFFSET;
 				unsigned char block[0x210];
-				memcpy(block, (void*)LOADER_RAW + i, 0x200);
-				memset(block + 0x200, 0, 0x10);
-				*(int*)block = bswap32((addr + OFFSET) / eraseblock_size);
-				block[0x205] = 0xFF;
-				calcecc(block);
-				write_page(addr + OFFSET, block);
+				printf("%08x\r", flash_addr);
+
+				readsector(block, flash_addr, 0);
+
+				u32 phys_pos = sfcx_readreg(6); /* physical addr */
+
+				if (!(phys_pos & 0x04000000)) /* shouldn't happen, unless the existing image is broken. just assume the sector is okay. */
+				{
+					printf(" * Uh, oh, don't know. Reading at %08x failed.\n", i);
+					phys_pos = flash_addr;
+				}
+				phys_pos &= 0x3fffe00;
+		
+				if (phys_pos != flash_addr)
+					printf(" * relocating sector %08x to %08x...\n", flash_addr, phys_pos);
+				
+				flash_erase(phys_pos);
+				int j;
+				for (j = 0; j < (eraseblock_size / 0x200); ++j)
+				{
+					memset(block, 0xff, 0x200);
+					if (fat_file_size > addr + j * 0x200)
+						memcpy(block, (void*)LOADER_RAW + addr + j * 0x200, 0x200);
+					memset(block + 0x200, 0, 0x10);
+
+					*(int*)(block + 0x200) = bswap_32(phys_pos / eraseblock_size);
+					block[0x205] = 0xFF;
+					calcecc(block);
+					write_page(phys_pos + j * 0x200, block);
+					
+					readsector(block, phys_pos + j * 0x200, 0);
+				}
 			}
 			printf(" * update done\n");
 
@@ -342,7 +378,7 @@ fail:
 		}
 #endif
 	}
-
+	
 	printf(" * try booting tftp\n");
 	boot_tftp(network_boot_server_name(), network_boot_file_name());
 	printf(" * try booting from CDROM\n");
