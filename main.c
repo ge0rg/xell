@@ -280,7 +280,7 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 		if (f)
 			break;
 		mftb(&e);
-	} while (tb_diff_sec(&e, &s) < 50);
+	} while (tb_diff_sec(&e, &s) < 5);
 
 	if (f)
 	{
