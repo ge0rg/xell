@@ -171,7 +171,7 @@ set_hrmor:
 .extern start
 .globl __start_other
 _start:
-	b start_from_rom
+	b main
 
 
 . = _start + 0x60

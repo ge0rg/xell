@@ -186,13 +186,13 @@ extern char __start_other[], __exception[];
 void syscall();
 void fix_hrmor();
 
+int start_from_exploit;
+
 int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 {
 	secondary_hold_addr = 0;
 
-#ifndef TARGET_xell
 	int exc[]={0x100, 0x200, 0x300, 0x380, 0x400, 0x480, 0x500, 0x600, 0x700, 0x800, 0x900, 0x980, 0xC00, 0xD00, 0xF00, 0xF20, 0x1300, 0x1600, 0x1700, 0x1800};
-#endif
 
 	int i;
 
@@ -201,10 +201,6 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	memset(p, 0, bss_end - bss_start);
 
 	printf("\nXeLL - Xenon linux loader " LONGVERSION "\n");
-
-#ifdef TARGET_xell
-	printf(" * WARNING: Bootstrapped XeLL not catching CPUs...\n");
-#else
 	printf(" * Attempting to catch all CPUs...\n");
 
 #if 1
@@ -240,13 +236,24 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	xenon_smc_start_bootanim();
 	
 	fix_hrmor();
-#endif
 
-			/* re-reset interrupt controllers. especially, remove their pending IPI IRQs. */
+	/* re-reset interrupt controllers. especially, remove their pending IPI IRQs. */
 	for (i=1; i<6; ++i)
 	{
 		*(uint64_t*)(0x8000020000050068ULL + i * 0x1000) = 0x74;
 		while (*(volatile uint64_t*)(0x8000020000050050ULL + i * 0x1000) != 0x7C);
+	}
+
+	start_from_exploit = 1;
+	return main();
+}
+
+int main() {
+	int i;
+
+	if (! start_from_exploit) {
+		printf("\nXeLL - Xenon linux loader " LONGVERSION "\n");
+		printf("Starting at ELF entry point.\n");
 	}
 
 	printf(" * xenos init\n");

@@ -78,7 +78,6 @@ xenos.o: version.h
 	$(CC) $(AFLAGS) -c -o $@ $*.S
 
 %.elf: %.lds $(OBJS)
-	$(CC) -D$(patsubst xell-%,TARGET_%,$*) $(CFLAGS) -c -o main.o main.c
 	$(CC) -n -T $< -nostdlib -m64 -o $@ $(OBJS)
 
 %.elf32: %.elf
