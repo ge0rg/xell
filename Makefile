@@ -5,7 +5,7 @@ LD=$(CROSS)ld
 AS=$(CROSS)as
 STRIP=$(CROSS)strip
 
-RELEASE=0.2
+RELEASE=0.3
 
 # Configuration
 CFLAGS = -Wall -O2 -I. -Ilwip/include \
@@ -63,9 +63,10 @@ version.h:
 	@echo '#define RELEASE "$(RELEASE)"' >> version.h
 	@echo '#define BLAME "'$(shell id -u -n)'@'$(shell uname -n -m)'"' >> version.h
 	@date +'#define DATE "%F"' >> version.h
+	@echo '#define GITREV "'$(shell git log --format="%h" HEAD^..HEAD)'"' >> version.h
 	@echo '' >> version.h
-	@echo '#define VERSION RELEASE "-cvs-" DATE' >> version.h
-	@echo '#define LONGVERSION VERSION " (" BLAME ")"' >> version.h
+	@echo '#define VERSION RELEASE "-git-" GITREV' >> version.h
+	@echo '#define LONGVERSION VERSION " " DATE " (" BLAME ")"' >> version.h
 
 main.o: version.h
 xenos.o: version.h
