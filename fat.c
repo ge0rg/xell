@@ -6,6 +6,7 @@
 
 #include <types.h>
 #include <string.h>
+#include "fat.h"
 #include "diskio.h"
 
 static inline u16 le16(const u8 *p)
@@ -277,11 +278,59 @@ int fat_open(const char *name)
 	return -1;
 }
 
-
-#ifdef FAT_TEST
-static void print_dir_entry(u8 *dir)
+int fat_open_cluster(const char *name, uint32_t cluster)
 {
-	int i, n;
+	//u32 cluster = 0;
+
+	while (*name) {
+		get_extent(cluster);
+
+		name = parse_component(name);
+
+		while (extent_len) {
+			u8 dir[0x20];
+
+			int err = read_extent(dir, 0x20);
+			if (err)
+				return err;
+
+			if (dir[0] == 0)
+				return -1;
+
+			if (dir[0x0b] & 0x08)	// volume label or LFN
+				continue;
+			if (dir[0x00] == 0xe5)	// deleted file
+				continue;
+
+			if (!!*name != !!(dir[0x0b] & 0x10))	// dir vs. file
+				continue;
+
+			if (memcmp(fat_name, dir, 11) == 0) {
+				cluster = le16(dir + 0x1a);
+				if (fat_type == 32)
+					cluster |= le16(dir + 0x14) << 16;
+
+				if (*name == 0) {
+					fat_file_size = le32(dir + 0x1c);
+					get_extent(cluster);
+
+					return 0;
+				}
+
+				break;
+			}
+		}
+	}
+
+	return -1;
+}
+
+
+DIR *dir_struct;
+
+static void print_dir_entry(uint8_t *dir)
+{
+	int i, n;	
 
 	if (dir[0x0b] & 0x08)	// volume label or LFN
 		return;
@@ -289,45 +338,81 @@ static void print_dir_entry(u8 *dir)
 		return;
 
 	if (fat_type == 32) {
-		fprintf(stderr, "#%04x", le16(dir + 0x14));
-		fprintf(stderr, "%04x  ", le16(dir + 0x1a));
-	} else
-		fprintf(stderr, "#%04x  ", le16(dir + 0x1a));	// start cluster
-	u16 date = le16(dir + 0x18);
+		//fprintf(stderr, "#%04x", le16(dir + 0x14));
+		//fprintf(stderr, "%04x  ", le16(dir + 0x1a));
+		dir_struct->cluster[dir_struct->count] = le16(dir + 0x14) + le16(dir + 0x1a);
+	} else	{
+		dir_struct->cluster[dir_struct->count] = le16(dir + 0x1a);
+		//fprintf(stderr, "#%04x  ", le16(dir + 0x1a));	// start cluster
+	}
+/*
+	uint16_t date = le16(dir + 0x18);
 	fprintf(stderr, "%04d-%02d-%02d ", 1980 + (date >> 9), (date >> 5) & 0x0f, date & 0x1f);
-	u16 time = le16(dir + 0x16);
+	uint16_t time = le16(dir + 0x16);
 	fprintf(stderr, "%02d:%02d:%02d  ", time >> 11, (time >> 5) & 0x3f, 2*(time & 0x1f));
 	fprintf(stderr, "%10d  ", le32(dir + 0x1c));	// file size
-	u8 attr = dir[0x0b];
+*/
+//	uint8_t attr = dir[0x0b];
+	if ( dir[0x0b] & 0x10 )
+		dir_struct->is_dir[dir_struct->count] = 1;
+	else
+		dir_struct->is_dir[dir_struct->count] = 0;
+/*
 	for (i = 0; i < 6; i++)
-		fprintf(stderr, "%c", (attr & (1 << i)) ? "RHSLDA"[i] : ' ');
-	fprintf(stderr, "  ");
+	{
+		printf("%c", (attr & (1 << i)) ? "RHSLDA"[i] : ' ');
+	}
+*/
+
+	//fprintf(stderr, "  ");
 	for (n = 8; n && dir[n - 1] == ' '; n--)
 		;
+
+	memset( dir_struct->name[dir_struct->count], 0, 8 );
 	for (i = 0; i < n; i++)
-		fprintf(stderr, "%c", dir[i]);
+	{
+		dir_struct->name[dir_struct->count][i] = dir[i];
+		//fprintf(stderr, "%c", dir[i]);
+	}
+
 	for (n = 3; n && dir[8 + n - 1] == ' '; n--)
 		;
 	if (n) {
-		fprintf(stderr, ".");
-		for (i = 0; i < n; i++)
-			fprintf(stderr, "%c", dir[8 + i]);
+		//fprintf(stderr, ".");
+		//for (i = 0; i < n; i++)
+			//dir_struct->name[dir_struct->count][i] = dir[8 + i];
+		//	fprintf(stderr, "%c", dir[8 + i]);
 	}
 
-	fprintf(stderr, "\n");
+	dir_struct->count++;
+
+	//fprintf(stderr, "\n");
 }
 
 
-int print_dir(u32 cluster)
+void free_dir( DIR *dir )
 {
-	u8 dir[0x20];
+	if ( dir != NULL )
+	{
+		mem_free ( dir );
+		dir = NULL;
+	}	
+}
+
+DIR *get_dir(uint32_t cluster)
+{
+
+	dir_struct = (DIR *) mem_malloc( sizeof( DIR ) );
+	dir_struct->count = 0;
+
+	uint8_t dir[0x20];
 
 	get_extent(cluster);
 
 	while (extent_len) {
 		int err = read_extent(dir, 0x20);
 		if (err)
-			return err;
+			return NULL;
 
 		if (dir[0] == 0)
 			break;
@@ -335,9 +420,8 @@ int print_dir(u32 cluster)
 		print_dir_entry(dir);
 	}
 
-	return 0;
+	return dir_struct;
 }
-#endif
 
 
 static int fat_init_fs(const u8 *sb)
