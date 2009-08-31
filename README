@@ -1,0 +1,26 @@
+This is XeLL.
+
+XeLL is the Xenon Linux Loader. It's a second-stage bootloader and is
+usually run by an exploit. The method of booting this is not a part of this
+project.
+
+XeLL catches CPU threads, sets them up (basically setting HRMOR to zero),
+loads an ELF file from either network (tftp) or CDROM, and launches it.
+
+It also contains a flat device tree for linux.
+
+cdrom.c includes a very simple ISO9660 parser, which tries to boot the file
+named ""vmlinux".
+
+lwIP (http://www.sics.se/~adam/lwip/) is used for networking. Network config
+is currently hardcoded in network.c (and main.c).
+
+XeLL also contains a HTTP server. It is not really used.
+
+XeLL is licensed under the GPL v2, and no other version.
+
+Xenon-specific stuff of XeLL was written by Felix Domke <tmbinc@elitedvb.net>, 
+other parts where taken from other free sourcecodes. No non-free hardware
+documentation was used for developing XeLL.
+
+XeLL is in a very early stage, but is (most of the time) fully working.
