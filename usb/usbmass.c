@@ -113,7 +113,7 @@ typedef struct usbmass_csw_s {
                            (s)->f##3 = ((v)>>24 & 0xFF);
 
 
-int usbmass_request_sense(usbdev_t *dev);
+int usbmass_request_sense(usbdev_t *dev, int lun);
 
 /*  *********************************************************************
     *  Linkage to CFE
@@ -143,13 +143,16 @@ static int usbmass_detach(usbdev_t *dev);
     *  Structures
     ********************************************************************* */
 
+#define MAXLUN 4
+
 typedef struct usbmass_softc_s {
     int umass_inpipe;
     int umass_outpipe;
     int umass_devtype;
+    int umass_maxlun;
     uint32_t umass_curtag;
     int umass_unit;
-    void *bdev;
+    void *bdev[MAXLUN];
     usbdev_t *dev;
 } usbmass_softc_t;
 
@@ -177,7 +180,6 @@ usbdev_t *usbmass_dev = NULL;		/* XX hack for testing only */
 #define usbmass_mass_storage_reset(dev,ifc) \
      usb_simple_request(dev,0x21,0xFF,ifc,0)
 
-#if 0
 /*  *********************************************************************
     *  usbmass_get_max_lun(dev,lunp)
     *  
@@ -204,8 +206,6 @@ static int usbmass_get_max_lun(usbdev_t *dev,int *lunp)
     return 0;
 }
 
-#endif
-
 
 /*  *********************************************************************
     *  usbmass_stall_recovery(dev)
@@ -227,7 +227,7 @@ static void usbmass_stall_recovery(usbdev_t *dev)
 
     usb_clear_stall(dev,softc->umass_inpipe);
 
-    usbmass_request_sense(dev);
+    usbmass_request_sense(dev, 0);
 }
 
 
@@ -245,7 +245,7 @@ static void usbmass_stall_recovery(usbdev_t *dev)
     *  	   status
     ********************************************************************* */
 
-int usbmass_request_sense(usbdev_t *dev)
+int usbmass_request_sense(usbdev_t *dev, int lun)
 {
     uint8_t *cbwcsw;
     uint8_t *sector;
@@ -272,7 +272,7 @@ int usbmass_request_sense(usbdev_t *dev)
     PUTCBWFIELD(cbw,dCBWTag,softc->umass_curtag);
     PUTCBWFIELD(cbw,dCBWDataTransferLength,18);
     cbw->bmCBWFlags = 0x80;		/* IN */
-    cbw->bCBWLUN = 0;
+    cbw->bCBWLUN = lun;
     cbw->bCBWCBLength = 12;
     cbw->CBWCB[0] = 0x3;		/* REQUEST SENSE */
     cbw->CBWCB[1] = 0;
@@ -318,6 +318,84 @@ int usbmass_request_sense(usbdev_t *dev)
 
 }
 
+int usbmass_test_unit_ready(usbdev_t *dev, int lun)
+{
+    uint8_t *cbwcsw;
+    uint8_t *sector;
+    usbmass_cbw_t *cbw;
+    usbmass_csw_t *csw;
+    usbmass_softc_t *softc;
+    int res;
+
+    softc = (usbmass_softc_t *) dev->ud_private;
+
+    cbwcsw = KMALLOC(64,32);
+    sector = KMALLOC(64,32);
+
+    memset(sector,0,64);
+
+    cbw = (usbmass_cbw_t *) cbwcsw;
+    csw = (usbmass_csw_t *) cbwcsw;
+
+    /*
+     * Fill in the fields of the CBW
+     */
+
+    PUTCBWFIELD(cbw,dCBWSignature,USBMASS_CBW_SIGNATURE);
+    PUTCBWFIELD(cbw,dCBWTag,softc->umass_curtag);
+    PUTCBWFIELD(cbw,dCBWDataTransferLength,0);
+    cbw->bmCBWFlags = 0x80;		/* IN */
+    cbw->bCBWLUN = lun;
+    cbw->bCBWCBLength = 12;
+    cbw->CBWCB[0] = 0;		/* TEST UNIT READY */
+    cbw->CBWCB[1] = 0;
+    cbw->CBWCB[2] = 0;
+    cbw->CBWCB[3] = 0;
+    cbw->CBWCB[4] = 0;			/* allocation length */
+    cbw->CBWCB[5] = 0;
+    cbw->CBWCB[6] = 0;
+    cbw->CBWCB[7] = 0;
+    cbw->CBWCB[8] = 0;
+    cbw->CBWCB[9] = 0;
+
+    softc->umass_curtag++;
+
+    /*
+     * Send the CBW 
+     */
+
+    res = usb_make_sync_request(dev,softc->umass_outpipe,(uint8_t *) cbw,
+				sizeof(usbmass_cbw_t),UR_FLAG_OUT);
+
+    /*
+     * Get the data
+     */
+#if 0
+    memset(sector,0,18);
+    res = usb_make_sync_request(dev,softc->umass_inpipe,sector,
+				18,UR_FLAG_IN | UR_FLAG_SHORTOK);
+		printf("test unit ready: ");
+		int i;
+		for (i=0; i<18; ++i)
+			printf("%02x ", sector[i]);
+		printf("\n");
+#endif
+    /*
+     * Get the Status
+     */
+
+    memset(csw,0,sizeof(usbmass_csw_t));
+    res = usb_make_sync_request(dev,softc->umass_inpipe,(uint8_t *) csw,
+				sizeof(usbmass_csw_t),UR_FLAG_IN);
+
+    KFREE(cbwcsw);
+
+    KFREE(sector);
+
+    return 0;
+}
+
+
 /*  *********************************************************************
     *  usbmass_read_sector(dev,sectornum,seccnt,buffer)
     *  
@@ -334,9 +412,9 @@ int usbmass_request_sense(usbdev_t *dev)
     ********************************************************************* */
 
 int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
-			hsaddr_t buffer);
+				hsaddr_t buffer, int lun);
 int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
-				hsaddr_t buffer)
+				hsaddr_t buffer, int lun)
 {
     uint8_t *cbwcsw;
     uint8_t *sector;
@@ -361,7 +439,7 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
     PUTCBWFIELD(cbw,dCBWTag,softc->umass_curtag);
     PUTCBWFIELD(cbw,dCBWDataTransferLength,(512*seccnt));
     cbw->bmCBWFlags = 0x80;		/* IN */
-    cbw->bCBWLUN = 0;
+    cbw->bCBWLUN = lun;
     cbw->bCBWCBLength = 10;
     cbw->CBWCB[0] = 0x28;		/* READ */
     cbw->CBWCB[1] = 0;
@@ -448,7 +526,7 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
     ********************************************************************* */
 
 static int usbmass_write_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
-				hsaddr_t buffer)
+				hsaddr_t buffer, int lun)
 {
     uint8_t *cbwcsw;
     uint8_t *sector;
@@ -473,7 +551,7 @@ static int usbmass_write_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt
     PUTCBWFIELD(cbw,dCBWTag,softc->umass_curtag);
     PUTCBWFIELD(cbw,dCBWDataTransferLength,(512*seccnt));
     cbw->bmCBWFlags = 0x00;		/* OUT */
-    cbw->bCBWLUN = 0;
+    cbw->bCBWLUN = lun;
     cbw->bCBWCBLength = 10;
     cbw->CBWCB[0] = 0x2A;		/* WRITE */
     cbw->CBWCB[1] = 0;
@@ -539,8 +617,8 @@ static int usbmass_write_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt
     *  	   status
     ********************************************************************* */
 
-int usbmass_read_capacity(usbdev_t *dev,uint32_t *size);
-int usbmass_read_capacity(usbdev_t *dev,uint32_t *size)
+int usbmass_read_capacity(usbdev_t *dev,uint32_t *size, int lun);
+int usbmass_read_capacity(usbdev_t *dev,uint32_t *size, int lun)
 {
     uint8_t *cbwcsw;
     uint8_t *sector;
@@ -569,7 +647,7 @@ int usbmass_read_capacity(usbdev_t *dev,uint32_t *size)
     PUTCBWFIELD(cbw,dCBWTag,softc->umass_curtag);
     PUTCBWFIELD(cbw,dCBWDataTransferLength,8);
     cbw->bmCBWFlags = 0x80;		/* IN */
-    cbw->bCBWLUN = 0;
+    cbw->bCBWLUN = lun;
     cbw->bCBWCBLength = 10;
     cbw->CBWCB[0] = 0x25;		/* READ CAPACITY */
     cbw->CBWCB[1] = 0;
@@ -624,6 +702,105 @@ int usbmass_read_capacity(usbdev_t *dev,uint32_t *size)
 	(((uint32_t) sector[1]) << 16) |
 	(((uint32_t) sector[2]) << 8) |
 	(((uint32_t) sector[3]) << 0);
+
+    KFREE(sector);
+
+    return 0;
+
+}
+
+int usbmass_do_inquiry(usbdev_t *dev, int lun)
+{
+    uint8_t *cbwcsw;
+    uint8_t *sector;
+    usbmass_cbw_t *cbw;
+    usbmass_csw_t *csw;
+    usbreq_t *ur;
+    usbmass_softc_t *softc;
+    int res;
+
+    softc = (usbmass_softc_t *) dev->ud_private;
+
+    cbwcsw = KMALLOC(64,32);
+    sector = KMALLOC(0x80,32);
+
+    memset(sector,0xCC,0x80);
+
+    cbw = (usbmass_cbw_t *) cbwcsw;
+    csw = (usbmass_csw_t *) cbwcsw;
+
+    /*
+     * Fill in the fields of the CBW
+     */
+
+    PUTCBWFIELD(cbw,dCBWSignature,USBMASS_CBW_SIGNATURE);
+    PUTCBWFIELD(cbw,dCBWTag,softc->umass_curtag);
+    PUTCBWFIELD(cbw,dCBWDataTransferLength,36); // 0x80);
+    cbw->bmCBWFlags = 0x80;		/* IN */
+    cbw->bCBWLUN = lun;
+    cbw->bCBWCBLength = 10;
+    cbw->CBWCB[0] = 0x12;		/* INQUIRY */
+    cbw->CBWCB[1] = 0;
+    cbw->CBWCB[2] = 0;
+    cbw->CBWCB[3] = 0;
+    cbw->CBWCB[4] = 36; // 0x80;
+    cbw->CBWCB[5] = 0;
+    cbw->CBWCB[6] = 0;
+    cbw->CBWCB[7] = 0;
+    cbw->CBWCB[8] = 0;
+    cbw->CBWCB[9] = 0;
+
+    softc->umass_curtag++;
+
+    /*
+     * Send the CBW
+     */
+
+    ur = usb_make_request(dev,softc->umass_outpipe,(uint8_t *) cbw,
+			  sizeof(usbmass_cbw_t),UR_FLAG_OUT);
+    res = usb_sync_request(ur);
+    usb_free_request(ur);
+
+    if (res == 4) {
+	usbmass_stall_recovery(dev);
+	KFREE(cbwcsw);
+	KFREE(sector);
+	return -1;
+	}
+
+    /*
+     * Get the data
+     */
+
+    ur = usb_make_request(dev,softc->umass_inpipe,sector,
+			  /* 0x80 */ 36,UR_FLAG_IN | UR_FLAG_SHORTOK);
+    res = usb_sync_request(ur);
+    usb_free_request(ur);
+
+    if (res == 4) {
+	usbmass_stall_recovery(dev);
+	KFREE(cbwcsw);
+	KFREE(sector);
+	return -1;
+	}
+
+    /*
+     * Get the Status
+     */
+
+    memset(csw,0,sizeof(usbmass_csw_t));
+    ur = usb_make_request(dev,softc->umass_inpipe,(uint8_t *) csw,
+			  sizeof(usbmass_csw_t),UR_FLAG_IN);
+    res = usb_sync_request(ur);
+    usb_free_request(ur);
+
+    KFREE(cbwcsw);
+    
+    printf("LUN %d: ", lun);
+    int i;
+    for (i=8; i<0x24; ++i)
+    	printf("%c", sector[i]);
+		printf("\n");
 
     KFREE(sector);
 
@@ -717,17 +894,44 @@ static int usbmass_attach(usbdev_t *dev,usb_driver_t *drv)
     softc->umass_inpipe     = usb_open_pipe(dev,indscr);
     softc->umass_outpipe    = usb_open_pipe(dev,outdscr);
     softc->umass_curtag     = 0x12345678;
+
+    {
+			int maxlun = 0;
+			if (usbmass_get_max_lun(dev, &maxlun))
+				printf("usbmass_get_max_lun failed, assuming only LUN0\n");
+			
+			if (maxlun >= MAXLUN)
+				maxlun = MAXLUN-1;
+
+			printf("probing %d LUN(s) on device %d\n", maxlun + 1, softc->umass_unit);
+			softc->umass_maxlun = maxlun;
+			
+			int i;
+			for (i=0; i<= maxlun; ++i)
+			{
+				usbmass_request_sense(dev, i);
+				usbmass_do_inquiry(dev, i);
+				int res;
+				uint32_t cap;
+
+				res = usbmass_test_unit_ready(dev, i);
+
+				res = usbmass_read_capacity(dev, &cap, i);
+				if (res < 0)
+				{
+					printf("read cap failed on LUN%d\n", i);
+					continue;
+				}
+				printf("capacity: %ld sectors (%ld MB)\n", cap, cap / 2048);
+
+				static int num = 0;
+				char name[10];
+				sprintf(name, "ud%c", 'a' + num); num++; num %= 26;
+				softc->bdev[i] = register_bdev(softc, &usbmass_ops, name);
+			}
+		}
     softc->dev = dev;
 
-    /*
-     * Save pointer in global unit table so we can
-     * match CFE devices up with USB ones
-     */
-
-    static int num = 0;
-    char name[10];
-    sprintf(name, "ud%c", 'a' + num); num++; num %= 26;
-    softc->bdev = register_bdev(softc, &usbmass_ops, name);
 
     usbmass_dev = dev;
 
@@ -754,7 +958,9 @@ static int usbmass_detach(usbdev_t *dev)
     usbmass_softc_t *softc;
     softc = (usbmass_softc_t *) dev->ud_private;
 
-    unregister_bdev(softc->bdev);
+    int i;
+    for (i = 0; i <= softc->umass_maxlun; ++i)
+	    unregister_bdev(softc->bdev[i]);
 
     KFREE(softc);
     return 0;
@@ -1109,11 +1315,18 @@ int usbmass_read(struct bdev *dev, void *data, lba_t lba, int num)
 	usbmass_softc_t *softc = dev->ctx;
 	lba += dev->offset;
 	
+	int lun = 0;
+	for (lun = 0; lun <= softc->umass_maxlun; ++lun)
+		if (softc->bdev[lun] == dev)
+			break;
+	if (lun > softc->umass_maxlun)
+		return -1;
+	
 	int r = 0;
 	while (num)
 	{
 		int tl = num;
-		if (usbmass_read_sector(softc->dev, lba, num, PTR2HSADDR(data)))
+		if (usbmass_read_sector(softc->dev, lba, num, PTR2HSADDR(data), lun))
 			break;
 		data += tl;
 		num -= tl;
