@@ -25,7 +25,7 @@
 
 int xenos_width, xenos_height,
     xenos_size;
-
+          
 void xenos_lowlevel_init(void);
 
 
@@ -41,7 +41,8 @@ uint32_t xenos_color[2] = { 0xD8444E00, 0xFF96A300 };
 unsigned char *xenos_fb;
 
 int cursor_x, cursor_y,
-    max_x, max_y;
+    max_x, max_y,
+    offset_x, offset_y;
 
 struct ati_info {
 	uint32_t unknown1[4];
@@ -110,7 +111,7 @@ void xenos_newline() {
 #if 0
 	/* fill up with spaces */
 	while (cursor_x*8 < xenos_width) {
-		xenos_draw_char(cursor_x*8, cursor_y*16, ' ');
+		xenos_draw_char(cursor_x*8 + offset_x, cursor_y*16 + offset_y, ' ');
 		cursor_x++;
 	}
 #endif
@@ -135,7 +136,7 @@ static inline void xenos_putch_impl(const char c) {
 	} else if (c == '\n') {
 		xenos_newline();
 	} else {
-		xenos_draw_char(cursor_x*8, cursor_y*16, c);
+		xenos_draw_char(cursor_x*8 + offset_x, cursor_y*16 + offset_y, c);
 		cursor_x++;
 		if (cursor_x >= max_x)
 			xenos_newline();
@@ -207,16 +208,16 @@ void xenos_init() {
 	int interlaced = gfx[0x30/4];
 	int black_top = gfx[0x44/4];
 	int offset = gfx[0x580/4];
-	int offset_x = (offset >> 16) & 0xFFFF;
-	int offset_y = offset & 0xFFFF;
+	int _offset_x = (offset >> 16) & 0xFFFF;
+	int _offset_y = offset & 0xFFFF;
 	printf(" - virtual resolution: %d x %d\n", vxres, vyres);
-	printf(" - offset: x=%d, y=%d\n", offset_x, offset_y);
+	printf(" - offset: x=%d, y=%d\n", _offset_x, _offset_y);
 	printf(" - black: %d %d, %d %d\n",
 		gfx[0x44/4], gfx[0x48/4], gfx[0x4c/4], gfx[0x50/4]);
 	printf(" - interlace flag: %x\n", interlaced);
 
-	int nxres = (vxres - offset_x * 2) * 0x1000 / (scl_h/0x1000);
-	int nyres = (vyres - offset_y * 2) * 0x1000 / (scl_v/0x1000) + black_top * 2;
+	int nxres = (vxres - _offset_x * 2) * 0x1000 / (scl_h/0x1000);
+	int nyres = (vyres - _offset_y * 2) * 0x1000 / (scl_v/0x1000) + black_top * 2;
 	printf(" - native resolution: %d x %d\n", nxres, nyres);
 
 	/* do not change res for interlaced mode! */
@@ -241,8 +242,16 @@ void xenos_init() {
 	xenos_size = xenos_width*xenos_height;
 
 	cursor_x = cursor_y = 0;
-	max_x = ai->width / 8;
-	max_y = ai->height / 16;
+	
+	if (xenos_height <= 576)
+	{
+		offset_x = 50;
+		offset_y = 50;
+	}
+
+	cursor_x = cursor_y = 0;
+	max_x = (ai->width - offset_x * 2) / 8;
+	max_y = (ai->height - offset_y * 2) / 16;
 
 	/* XXX use memset_io() instead? */
 	xenos_clrscr(xenos_color[0]);
