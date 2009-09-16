@@ -942,6 +942,8 @@ http_accept(void *arg, struct tcp_pcb *pcb, err_t err)
 	
 	tcp_poll(pcb, http_poll, 4);
 	
+	tcp_accepted(pcb); //lwip 1.3.0
+	
 //	printf("accept!\n");
 	return ERR_OK;
 }

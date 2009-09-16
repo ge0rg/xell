@@ -8,8 +8,8 @@ STRIP=$(CROSS)strip
 RELEASE=0.3
 
 # Configuration
-CFLAGS = -Wall -O2 -I. -Ilwip/include \
-	-Iinclude -I./lwip/include/ipv4 -Ilwip/arch/xenon/include \
+CFLAGS = -Wall -O2 -I. -Iinclude \
+	-I./lwip/src/include -I./lwip/src/include/ipv4 -I./lwip/xenon/include \
 	-m64 -mno-toc -DBYTE_ORDER=BIG_ENDIAN -mno-altivec \
 	-I nocfe -D_CFE_=1 -DENDIAN_BIG=1
 	
@@ -21,15 +21,16 @@ LDFLAGS = -nostdlib -n
 
 OBJS = crt0.o main_ardl_.o string_asm.o string.o ctype.o video.o console.o exi.o \
 
-LWIP_OBJS = ./lwip/core/tcp_in.o \
-	./lwip/core/inet.o ./lwip/core/mem.o ./lwip/core/memp.o \
-	./lwip/core/netif.o ./lwip/core/pbuf.o ./lwip/core/stats.o ./lwip/core/sys.o \
-	./lwip/core/tcp.o  ./lwip/core/ipv4/ip_addr.o ./lwip/core/ipv4/icmp.o \
-	./lwip/core/ipv4/ip.o ./lwip/core/ipv4/ip_frag.o  \
-	./lwip/core/tcp_out.o \
-	./lwip/core/udp.o ./lwip/netif/etharp.o ./lwip/netif/loopif.o ./lwip/core/dhcp.o \
-	./lwip/core/raw.o \
-	./lwip/arch/xenon/lib.o  ./lwip/arch/xenon/netif/enet.o
+LWIP_OBJS = ./lwip/src/core/init.o \
+	./lwip/src/core/tcp_in.o ./lwip/src/core/ipv4/inet_chksum.o \
+	./lwip/src/core/ipv4/inet.o ./lwip/src/core/mem.o ./lwip/src/core/memp.o \
+	./lwip/src/core/netif.o ./lwip/src/core/pbuf.o ./lwip/src/core/stats.o ./lwip/src/core/sys.o \
+	./lwip/src/core/tcp.o  ./lwip/src/core/ipv4/ip_addr.o ./lwip/src/core/ipv4/icmp.o \
+	./lwip/src/core/ipv4/ip.o ./lwip/src/core/ipv4/ip_frag.o  \
+	./lwip/src/core/tcp_out.o \
+	./lwip/src/core/udp.o ./lwip/src/netif/etharp.o ./lwip/src/netif/loopif.o ./lwip/src/core/dhcp.o \
+	./lwip/src/core/raw.o \
+	./lwip/xenon/src/lib.o  ./lwip/xenon/netif/enet.o
 
 USB_OBJS = \
 	usb/ohci.o usb/usbd.o usb/usbdebug.o usb/usbdevs.o usb/usbhid.o usb/usbhub.o usb/usbmain.o  usb/usbmass.o \
