@@ -1,0 +1,5 @@
+*.o
+*.elf
+*.elf32
+*.bin
+version.h
