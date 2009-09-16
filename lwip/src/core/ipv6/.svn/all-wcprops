@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/Private/!svn/ver/97/Xbox/xell_choice/lwip/src/core/ipv6
+END
+icmp6.c
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/Private/!svn/ver/97/Xbox/xell_choice/lwip/src/core/ipv6/icmp6.c
+END
+ip6.c
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/Private/!svn/ver/97/Xbox/xell_choice/lwip/src/core/ipv6/ip6.c
+END
+inet6.c
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/Private/!svn/ver/97/Xbox/xell_choice/lwip/src/core/ipv6/inet6.c
+END
+ip6_addr.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/Private/!svn/ver/97/Xbox/xell_choice/lwip/src/core/ipv6/ip6_addr.c
+END
+README
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/Private/!svn/ver/97/Xbox/xell_choice/lwip/src/core/ipv6/README
+END
