@@ -52,8 +52,10 @@ int getchar(void)
 
 int putchar(int c)
 {
+	/*
 	if (c == '\n')
 		putch('\r');
+	*/
 	putch(c);
 	xenos_putch(c);
 	return 0;
@@ -199,6 +201,9 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	/* initialize BSS first. DO NOT INSERT CODE BEFORE THIS! */
 	unsigned char *p = (unsigned char*)bss_start;
 	memset(p, 0, bss_end - bss_start);
+
+	/* set UART to 38400, 8, N, 1 */
+	*(volatile uint32_t*)0x80000200ea00101c = 0xae010000;
 
 	printf("\nXeLL - Xenon linux loader " LONGVERSION "\n");
 	printf(" * Attempting to catch all CPUs...\n");
