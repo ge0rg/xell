@@ -52,8 +52,10 @@ int getchar(void)
 
 int putchar(int c)
 {
+#ifndef CYGNOS
 	if (c == '\n')
 		putch('\r');
+#endif
 	putch(c);
 	xenos_putch(c);
 	return 0;
@@ -200,7 +202,16 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	unsigned char *p = (unsigned char*)bss_start;
 	memset(p, 0, bss_end - bss_start);
 
-	printf("\nXeLL - Xenon linux loader " LONGVERSION "\n");
+#ifdef CYGNOS
+	/* set UART to 38400, 8, N, 1 */
+	*(volatile uint32_t*)0x80000200ea00101c = 0xae010000;
+#endif
+
+	printf("\nXeLL - Xenon linux loader " LONGVERSION
+#ifdef CYGNOS
+			" (Cygnos360 v2)"
+#endif
+			"\n");
 	printf(" * Attempting to catch all CPUs...\n");
 
 #if 1

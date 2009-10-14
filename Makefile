@@ -13,6 +13,10 @@ CFLAGS = -Wall -O2 -I. -Ilwip/include \
 	-m64 -mno-toc -DBYTE_ORDER=BIG_ENDIAN -mno-altivec \
 	-I nocfe -D_CFE_=1 -DENDIAN_BIG=1
 	
+ifdef CYGNOS
+CFLAGS += -DCYGNOS
+endif
+
 AFLAGS = -Iinclude -m64
 LDFLAGS = -nostdlib -n
 
