@@ -14,7 +14,6 @@
 #include "netif/etharp.h"
 
 struct netif netif;
-struct ip_addr ipaddr, netmask, gw;
 static tb_t now, last_tcp, last_dhcp;
 
 extern void enet_poll(struct netif *netif);
@@ -27,6 +26,8 @@ void network_poll();
 
 void network_init()
 {
+	struct ip_addr ipaddr, netmask, gw;
+
 	printf("trying to initialize network...\n");
 
 #ifdef STATS
@@ -97,7 +98,7 @@ void print_network_config()
 {
 #define NTOA(ip) (int)((ip.addr>>24)&0xff), (int)((ip.addr>>16)&0xff), (int)((ip.addr>>8)&0xff), (int)(ip.addr&0xff)
 	printf(" * XeLL network config: %d.%d.%d.%d / %d.%d.%d.%d\n",
-		NTOA(ipaddr), NTOA(netmask));
+		NTOA(netif.ip_addr), NTOA(netif.netmask));
 }
 
 void network_poll()
