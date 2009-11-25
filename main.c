@@ -382,19 +382,16 @@ int main() {
 		mftb(&e);
 	} while (tb_diff_sec(&e, &s) < 5);
 
-	if (f)
+	if (f && 0 == fat_init(f))
 	{
-		if (fat_init(f))
-			printf(" * FAT init failed\n");
-		else if (fat_open("/xenon.elf"))
-			printf("fat open of /xenon.elf failed\n");
-		else
+		if (!fat_open("/xenon.elf"))
 		{
 			printf(" * fat open okay, loading file...\n");
 			int r = fat_read(LOADER_RAW, LOADER_MAXSIZE);
 			printf(" * executing...\n");
 			execute_elf_at((void*)LOADER_RAW);
-		}
+		} else
+			printf("fat open of /xenon.elf failed\n");
 		
 #if 1
 		if (!fat_open("/updxell.bin"))
@@ -405,7 +402,8 @@ int main() {
 			update_xell_flash(LOADER_RAW);
 		}
 #endif
-	}
+	} else
+		printf(" * USB/FAT init failed.\n");
 	
 	printf(" * try booting tftp\n");
 	boot_tftp(network_boot_server_name(), network_boot_file_name());
