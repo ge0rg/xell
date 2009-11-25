@@ -185,8 +185,7 @@ extern char __start_other[], __exception[];
 #define LOADER_RAW         0x8000000004000000ULL
 #define LOADER_MAXSIZE     0x1000000
 
-void update_xell_flash(void *xell_address) {
-	extern u32 fat_file_size;
+void update_xell_flash(void *xell_address, u32 file_size) {
 	int i;
 		
 	printf(" * flashing @1MB...\n");
@@ -244,7 +243,7 @@ void update_xell_flash(void *xell_address) {
 		for (j = 0; j < (eraseblock_size / 0x200); ++j)
 		{
 			memset(block, 0xff, 0x200);
-			if (fat_file_size > addr + j * 0x200)
+			if (file_size > addr + j * 0x200)
 				memcpy(block, xell_address + addr + j * 0x200, 0x200);
 			memset(block + 0x200, 0, 0x10);
 
@@ -384,6 +383,8 @@ int main() {
 
 	if (f && 0 == fat_init(f))
 	{
+		extern u32 fat_file_size;
+
 		if (!fat_open("/xenon.elf"))
 		{
 			printf(" * fat open okay, loading file...\n");
@@ -399,7 +400,7 @@ int main() {
 			printf(" * found XeLL update. press power NOW if you don't want to update.\n");
 			delay(15);
 			fat_read(LOADER_RAW, LOADER_MAXSIZE);
-			update_xell_flash(LOADER_RAW);
+			update_xell_flash(LOADER_RAW, fat_file_size);
 		}
 #endif
 	} else
