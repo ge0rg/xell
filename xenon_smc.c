@@ -60,6 +60,15 @@ int xenon_smc_receive_message(unsigned char *msg)
 	return -1;
 }
 
+/* store the last IR keypress */
+int xenon_smc_last_ir = -1;
+
+int xenon_smc_get_ir() {
+	int ret = xenon_smc_last_ir;
+	xenon_smc_last_ir = -1;
+	return ret;
+}
+
 void xenon_smc_handle_bulk(unsigned char *msg)
 {
 	switch (msg[1])
@@ -70,6 +79,7 @@ void xenon_smc_handle_bulk(unsigned char *msg)
 		break;
 	case 0x23:
 		printf("IR RX [%02x %02x]\n", msg[2], msg[3]);
+		xenon_smc_last_ir = msg[3];
 		break;
 	case 0x60 ... 0x65:
 		printf("DVD cover state: %02x\n", msg[1]);
@@ -78,6 +88,21 @@ void xenon_smc_handle_bulk(unsigned char *msg)
 		printf("unknown SMC bulk msg\n");
 		break;
 	}
+}
+
+int xenon_smc_poll()
+{
+	uint8_t buf[16];
+	memset(buf, 0, 16);
+
+	if (!xenon_smc_receive_message(buf)) {
+		if (buf[0] == 0x83)
+		{
+			xenon_smc_handle_bulk(buf);
+		}
+		return 0;
+	}
+	return -1;
 }
 
 int xenon_smc_receive_response(unsigned char *msg)
@@ -168,6 +193,12 @@ void xenon_smc_set_led(int override, int value)
 void xenon_smc_power_shutdown(void)
 {
 	uint8_t buf[16] = {0x82, 0x11, 0x01};
+	xenon_smc_send_message(buf);
+}
+
+void xenon_smc_power_nack(void)
+{
+	uint8_t buf[16] = {0x82, 0x04, 0x33};
 	xenon_smc_send_message(buf);
 }
 
