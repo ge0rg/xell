@@ -260,6 +260,17 @@ fail:
 			while (1);
 }
 
+void try_boot_fat(char *filename) {
+	extern u32 fat_file_size;
+	if (!fat_open(filename)) {
+		printf(" * fat open okay, loading file...\n");
+		int r = fat_read(LOADER_RAW, LOADER_MAXSIZE);
+		printf(" * executing...\n");
+		execute_elf_at((void*)LOADER_RAW);
+	} else
+		printf("fat open of %s failed!\n", filename);
+}
+
 void syscall();
 void fix_hrmor();
 
@@ -385,14 +396,7 @@ int main() {
 	{
 		extern u32 fat_file_size;
 
-		if (!fat_open("/xenon.elf"))
-		{
-			printf(" * fat open okay, loading file...\n");
-			int r = fat_read(LOADER_RAW, LOADER_MAXSIZE);
-			printf(" * executing...\n");
-			execute_elf_at((void*)LOADER_RAW);
-		} else
-			printf("fat open of /xenon.elf failed\n");
+		try_boot_fat("xenon.elf");
 		
 #if 1
 		if (!fat_open("/updxell.bin"))
