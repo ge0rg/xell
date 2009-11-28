@@ -16,6 +16,8 @@ extern void try_boot_cdrom(char *);
 /* xenos.c: */
 extern void xenos_init();
 extern void xenos_putch(const char c);
+/* menu.c: */
+extern void main_menu();
 
 extern char *network_boot_file_name();
 extern char *network_boot_server_name();
@@ -33,7 +35,7 @@ static void putch(unsigned char c)
 	*(volatile uint32_t*)0x80000200ea001014 = (c << 24) & 0xFF000000;
 }
 
-static int kbhit(void)
+int kbhit(void)
 {
 	uint32_t status;
 	
@@ -345,6 +347,18 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	return main();
 }
 
+char XELL[] = "ip 192.168.0.250/255.255.255.0\n"
+"server 192.168.0.31\n"
+"timeout 99\n"
+"\n"
+"usb  vmlinux		Linux-usb\n"
+"cd   vmlinux		Linux-cd\n"
+"cd   vmlinux-initramfs	Recovery Linux\n"
+"hdd  vmlinux		to be implemented\n"
+"tftp /tftpboot/xenon	Xenon from TFTP\n"
+"tftp /tftpboot/vmlinux-2.6.21.sda2.sata.fbfix Linux-sda2 from TFTP\n"
+"\n";
+
 char FUSES[350]; /* this string stores the ascii dump of the fuses */
 
 int main() {
@@ -398,7 +412,16 @@ int main() {
 
 	if (f && 0 == fat_init(f))
 	{
+		//main_menu(XELL, sizeof(XELL));
 		extern u32 fat_file_size;
+
+		if (!fat_open("xell.cfg"))
+		{
+			int r = fat_read(LOADER_RAW, LOADER_MAXSIZE);
+			main_menu(LOADER_RAW, fat_file_size);
+		}
+		/* TODO: remove this, static XeLL menu */
+		main_menu(XELL, sizeof(XELL));
 
 		try_boot_fat("xenon.elf");
 		
