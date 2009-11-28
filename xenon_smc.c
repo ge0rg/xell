@@ -65,6 +65,7 @@ void xenon_smc_handle_bulk(unsigned char *msg)
 	switch (msg[1])
 	{
 	case 0x11:
+	case 0x20:
 		printf("SMC power message\n");
 		break;
 	case 0x23:
