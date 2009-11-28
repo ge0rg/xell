@@ -345,6 +345,8 @@ int start(int pir, unsigned long hrmor, unsigned long pvr, void *r31)
 	return main();
 }
 
+char FUSES[350]; /* this string stores the ascii dump of the fuses */
+
 int main() {
 	int i;
 
@@ -369,8 +371,10 @@ int main() {
 
 #if 1
 	printf(" * FUSES - write them down and keep them safe:\n");
+	char *fusestr = FUSES;
 	for (i=0; i<12; ++i)
-		printf("fuseset %02d: %016lx\n", i, *(unsigned long*)(0x8000020000020000 + (i * 0x200)));
+		fusestr += sprintf(fusestr, "fuseset %02d: %016lx\n", i, *(unsigned long*)(0x8000020000020000 + (i * 0x200)));
+	printf(FUSES);
 #endif
 
 	if (get_online_processors() != 0x3f)

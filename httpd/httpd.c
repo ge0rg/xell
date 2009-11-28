@@ -761,6 +761,20 @@ static void response_mem_finish(struct http_state *http)
 	mem_free(priv);
 }
 
+static int response_fuses_process_request(struct http_state *http, const char *method, const char *url)
+{
+	if (strcmp(method, "GET"))
+		return 0;
+		
+	if (strcmp(url, "/FUSE"))
+		return 0;
+
+	extern char FUSES[350]; /* this has to be static */
+	http->code = 200;
+	response_static_process_request(http, FUSES);
+	return 1;
+}
+
 
  	/* ---------- err400 handler */
 
@@ -789,6 +803,7 @@ struct httpd_handler http_handler[]=
 #ifndef UNIX
 		{response_mem_process_request, 0, 0, response_mem_do_header, response_mem_do_data, 0, response_mem_finish},
 #endif
+		{response_fuses_process_request, 0, 0, 0, response_static_do_data, 0, response_static_finish},
 		{response_vfs_process_request, 0, 0, response_vfs_do_header, response_vfs_do_data, 0, response_vfs_finish},
 		{response_err400_process_request, 0, 0, 0, response_static_do_data, 0, response_static_finish},
 		{response_err404_process_request, 0, 0, 0, response_static_do_data, 0, response_static_finish}
